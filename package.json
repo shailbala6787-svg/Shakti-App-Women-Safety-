@@ -1,0 +1,19 @@
+{
+  "name": "shakti-app-women-safety",
+  "version": "1.0.0",
+  "description": "Shakti — Women Safety Super App (Bilingual)",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx -y http-server -p 3000",
+    "dev": "npx -y http-server -p 3000"
+  },
+  "keywords": [
+    "safety-app",
+    "women-safety",
+    "bilingual",
+    "web-audio-api",
+    "sos-trigger"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}

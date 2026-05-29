@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shakti — Women Safety Super App</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Rozha+One&display=swap" rel="stylesheet">
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Background Animated Elements -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- Main Device Viewport Wrapper (Centered on desktop, full-screen on mobile) -->
+  <div class="device-wrapper">
+    <div class="device-notch">
+      <div class="notch-lens"></div>
+      <div class="notch-speaker"></div>
+    </div>
+    
+    <!-- Mobile Status Bar (Aesthetic Detail) -->
+    <div class="device-status-bar">
+      <div class="status-time" id="status-time">12:00</div>
+      <div class="status-icons">
+        <i class="fa-solid fa-wifi wifi-pulse"></i>
+        <i class="fa-solid fa-signal"></i>
+        <div class="battery-icon">
+          <span class="battery-level" id="battery-level" style="width: 85%;"></span>
+        </div>
+        <span class="battery-text" id="battery-text">85%</span>
+      </div>
+    </div>
+
+    <!-- App Main Container -->
+    <div class="app-container">
+      
+      <!-- Top Navigation Header -->
+      <header class="app-header">
+        <div class="header-logo">
+          <i class="fa-solid fa-shield-halved logo-icon"></i>
+          <div class="logo-text">
+            <h1 class="logo-en">SHAKTI</h1>
+            <h1 class="logo-hi hide">शक्ति</h1>
+            <span class="subtitle-en">Safety Shield</span>
+            <span class="subtitle-hi hide">सुरक्षा कवच</span>
+          </div>
+        </div>
+        
+        <!-- Controls: Settings, Language Toggle -->
+        <div class="header-controls">
+          <button id="settings-btn" class="settings-cog-btn" onclick="switchScreen('screen-settings')" aria-label="Settings">
+            <i class="fa-solid fa-sliders"></i>
+          </button>
+          <button id="lang-btn" class="lang-toggle-btn" aria-label="Toggle Language">
+            <span class="lang-lbl active">EN</span>
+            <span class="lang-divider">|</span>
+            <span class="lang-lbl">हिं</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Screens Navigation Wrapper -->
+      <main class="app-screens">
+
+        <!-- ==================== SCREEN 1: HOME (DASHBOARD) ==================== -->
+        <section id="screen-home" class="app-screen active">
+          
+          <!-- Safety Status Banner -->
+          <div class="safety-status-banner safe" id="home-status-banner">
+            <div class="status-dot-pulse"></div>
+            <span class="status-text-en">SHIELD ACTIVE • WE HAVE YOUR BACK</span>
+            <span class="status-text-hi hide">कवच सक्रिय • हम आपके साथ हैं</span>
+          </div>
+
+          <!-- SOS Trigger Core Section -->
+          <div class="sos-container">
+            <!-- Pulsing outer rings -->
+            <div class="sos-glow-ring"></div>
+            <div class="sos-glow-ring secondary"></div>
+            
+            <button id="sos-button" class="sos-button-main" aria-label="SOS Alert">
+              <!-- Radial progress indicator for SOS countdown hold -->
+              <svg class="sos-progress-svg" viewBox="0 0 100 100">
+                <circle class="sos-progress-bg" cx="50" cy="50" r="45"></circle>
+                <circle id="sos-progress-bar" class="sos-progress-bar" cx="50" cy="50" r="45"></circle>
+              </svg>
+              <div class="sos-inner-content">
+                <span class="sos-label-en">SOS</span>
+                <span class="sos-label-hi hide">एसओएस</span>
+                <span class="sos-subtext-en">Hold 3s</span>
+                <span class="sos-subtext-hi hide">३ से. दबाएं</span>
+              </div>
+            </button>
+
+            <!-- Countdown Overlay -->
+            <div id="sos-countdown-overlay" class="sos-countdown-overlay hide">
+              <div class="countdown-circle">
+                <span id="countdown-number">3</span>
+              </div>
+              <div class="countdown-helper-en">Release to Cancel</div>
+              <div class="countdown-helper-hi hide">रद्द करने के लिए छोड़ें</div>
+            </div>
+          </div>
+
+          <!-- Quick Actions Grid -->
+          <div class="utilities-grid">
+            
+            <!-- Utility 1: Fake Call -->
+            <button class="utility-card" onclick="switchScreen('screen-fakecall')">
+              <div class="card-icon-wrapper call-pink">
+                <i class="fa-solid fa-phone-volume"></i>
+              </div>
+              <div class="card-info">
+                <h3 class="card-title-en">Fake Call</h3>
+                <h3 class="card-title-hi hide">आभासी कॉल</h3>
+                <p class="card-desc-en">Escape unsafe environments</p>
+                <p class="card-desc-hi hide">असहज स्थिति से बाहर निकलें</p>
+              </div>
+              <i class="fa-solid fa-chevron-right arrow-icon"></i>
+            </button>
+
+            <!-- Utility 2: Safety Map -->
+            <button class="utility-card" onclick="switchScreen('screen-safemap')">
+              <div class="card-icon-wrapper map-blue">
+                <i class="fa-solid fa-compass"></i>
+              </div>
+              <div class="card-info">
+                <h3 class="card-title-en">Safe Radar Map</h3>
+                <h3 class="card-title-hi hide">सुरक्षित राडार</h3>
+                <p class="card-desc-en">Locate nearest safety hubs & walk</p>
+                <p class="card-desc-hi hide">नजदीकी सुरक्षित क्षेत्र व पुलिस</p>
+              </div>
+              <i class="fa-solid fa-chevron-right arrow-icon"></i>
+            </button>
+
+            <!-- Utility 3: Audio Witness -->
+            <button class="utility-card" onclick="switchScreen('screen-witness')">
+              <div class="card-icon-wrapper witness-green">
+                <i class="fa-solid fa-microphone-lines"></i>
+              </div>
+              <div class="card-info">
+                <h3 class="card-title-en">Audio Witness</h3>
+                <h3 class="card-title-hi hide">ऑडियो साक्ष्य</h3>
+                <p class="card-desc-en">Secure gradient voice recording</p>
+                <p class="card-desc-hi hide">चुपचाप सबूत रिकॉर्ड करें</p>
+              </div>
+              <i class="fa-solid fa-chevron-right arrow-icon"></i>
+            </button>
+
+            <!-- Utility 4: Siren & Strobe Alarm -->
+            <button class="utility-card" id="quick-siren-card">
+              <div class="card-icon-wrapper siren-red">
+                <i class="fa-solid fa-bell"></i>
+              </div>
+              <div class="card-info">
+                <h3 class="card-title-en">Loud Siren & Flash</h3>
+                <h3 class="card-title-hi hide">साइरन और फ्लैश</h3>
+                <p class="card-desc-en">High pitched audible defense</p>
+                <p class="card-desc-hi hide">आसपास के लोगों को सतर्क करें</p>
+              </div>
+              <div class="card-badge" id="siren-status-badge">OFF</div>
+            </button>
+            
+          </div>
+
+          <!-- Quick Tip Panel -->
+          <div class="quick-tip-card">
+            <div class="tip-header">
+              <i class="fa-solid fa-lightbulb yellow-glow"></i>
+              <h4 class="tip-title-en">Safety Tip of the Day</h4>
+              <h4 class="tip-title-hi hide">आज की सुरक्षा सलाह</h4>
+            </div>
+            <p id="daily-tip-text" class="tip-text-en">When walking alone at night, keep your head up and dynamic posture. Avoid staring down at your mobile phone.</p>
+            <p id="daily-tip-text-hi" class="tip-text-hi hide">रात में अकेले चलते समय, अपना सिर ऊंचा रखें और सतर्क रहें। मोबाइल फोन में लगातार देखने से बचें।</p>
+          </div>
+
+        </section>
+
+
+        <!-- ==================== SCREEN 2: EMERGENCY CONTACTS ==================== -->
+        <section id="screen-contacts" class="app-screen">
+          <div class="screen-header">
+            <h2 class="sect-title-en">Trusted Guardians</h2>
+            <h2 class="sect-title-hi hide">विश्वसनीय संरक्षक (गार्डियंस)</h2>
+            <p class="sect-subtitle-en">People who will receive SOS alerts, location logs, and status updates.</p>
+            <p class="sect-subtitle-hi hide">जिन्हें आपातकालीन अलर्ट, लाइव लोकेशन और स्टेटस अपडेट भेजे जाएंगे।</p>
+          </div>
+
+          <!-- Add Contact Form -->
+          <form id="contact-form" class="glass-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="contact-name" class="label-en">Full Name</label>
+                <label for="contact-name" class="label-hi hide">पूरा नाम</label>
+                <input type="text" id="contact-name" placeholder="e.g. Sister, Mom, Friend" required>
+              </div>
+              <div class="form-group">
+                <label for="contact-phone" class="label-en">Phone Number</label>
+                <label for="contact-phone" class="label-hi hide">फ़ोन नंबर</label>
+                <input type="tel" id="contact-phone" placeholder="10 Digit Mobile No." pattern="[0-9]{10}" required>
+              </div>
+            </div>
+            <button type="submit" class="primary-btn submit-btn">
+              <i class="fa-solid fa-user-plus"></i> 
+              <span class="btn-text-en">Add Contact</span>
+              <span class="btn-text-hi hide">संपर्क जोड़ें</span>
+            </button>
+          </form>
+
+          <!-- Contacts List -->
+          <div class="contacts-list-container">
+            <h3 class="list-heading-en">Your Active Guardians</h3>
+            <h3 class="list-heading-hi hide">आपके सक्रिय संरक्षक</h3>
+            
+            <div id="contacts-list" class="contacts-list">
+              <!-- Dynamically populated contacts will appear here -->
+              <div class="empty-state-contacts">
+                <i class="fa-solid fa-users-slash"></i>
+                <p class="empty-text-en">No emergency contacts added yet.</p>
+                <p class="empty-text-hi hide">अभी तक कोई आपातकालीन संपर्क नहीं जोड़ा गया है।</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ==================== SCREEN 3: FAKE CALL SIMULATOR ==================== -->
+        <section id="screen-fakecall" class="app-screen">
+          <div class="screen-back-btn" onclick="switchScreen('screen-home')">
+            <i class="fa-solid fa-chevron-left"></i>
+            <span class="back-text-en">Dashboard</span>
+            <span class="back-text-hi hide">डैशबोर्ड</span>
+          </div>
+
+          <div class="screen-header">
+            <h2 class="sect-title-en">Fake Call Planner</h2>
+            <h2 class="sect-title-hi hide">आभासी कॉल प्लानर</h2>
+            <p class="sect-subtitle-en">Schedule an incoming phone call with voice simulation to exit uncomfortable situations safely.</p>
+            <p class="sect-subtitle-hi hide">संदेहास्पद या असुरक्षित माहौल से बाहर निकलने के लिए एक नकली आने वाली कॉल का नाटक करें।</p>
+          </div>
+
+          <!-- Configuration Panel -->
+          <div class="glass-panel fakecall-config">
+            <div class="form-group">
+              <label for="fake-caller-name" class="label-en">Simulated Caller Identity</label>
+              <label for="fake-caller-name" class="label-hi hide">आभासी कॉलर की पहचान</label>
+              <input type="text" id="fake-caller-name" value="Mom 💖" placeholder="e.g. Police, Papa, Boss">
+            </div>
+
+            <div class="form-group">
+              <label class="label-en">Choose Countdown Delay</label>
+              <label class="label-hi hide">समय अंतराल (देरी) चुनें</label>
+              <div class="timer-presets">
+                <button type="button" class="preset-btn active" data-seconds="5">5s</button>
+                <button type="button" class="preset-btn" data-seconds="15">15s</button>
+                <button type="button" class="preset-btn" data-seconds="60">1m</button>
+                <button type="button" class="preset-btn" data-seconds="300">5m</button>
+              </div>
+            </div>
+
+            <div class="fakecall-audio-select form-group">
+              <label class="label-en">Caller Audio Voice Option</label>
+              <label class="label-hi hide">कॉलर की आवाज का प्रकार</label>
+              <select id="fake-call-voice">
+                <option value="voice-mom-en">Mother asking to come home (English)</option>
+                <option value="voice-mom-hi">माँ - घर जल्दी आने को कहते हुए (Hindi)</option>
+                <option value="voice-police-en">Inspector requesting urgent witness report (English)</option>
+                <option value="voice-uber-en">Ride cab driver waiting outside (English)</option>
+              </select>
+            </div>
+
+            <button id="trigger-fake-call-btn" class="primary-btn call-btn">
+              <i class="fa-solid fa-phone"></i>
+              <span class="btn-text-en">Schedule Fake Call</span>
+              <span class="btn-text-hi hide">कॉल शेड्यूल करें</span>
+            </button>
+          </div>
+
+          <!-- Simulated Active Timer Status -->
+          <div id="fakecall-countdown-display" class="fakecall-countdown-display hide">
+            <i class="fa-solid fa-clock-rotate-left pulse-icon"></i>
+            <div>
+              <p class="timer-title-en">Incoming call scheduled</p>
+              <p class="timer-title-hi hide">इनकमिंग कॉल शेड्यूल्ड है</p>
+              <p class="timer-sec"><span id="fakecall-sec-left">5</span> seconds remaining...</p>
+            </div>
+            <button id="cancel-fakecall-btn" class="cancel-mini-btn">Cancel</button>
+          </div>
+        </section>
+
+
+        <!-- ==================== SCREEN 4: SAFE RADAR MAP ==================== -->
+        <section id="screen-safemap" class="app-screen">
+          <div class="screen-back-btn" onclick="switchScreen('screen-home')">
+            <i class="fa-solid fa-chevron-left"></i>
+            <span class="back-text-en">Dashboard</span>
+            <span class="back-text-hi hide">डैशबोर्ड</span>
+          </div>
+
+          <div class="screen-header">
+            <h2 class="sect-title-en">Safe Radar Navigator</h2>
+            <h2 class="sect-title-hi hide">सुरक्षित राडार नेविगेटर</h2>
+            <p class="sect-subtitle-en">Interactive simulation displaying nearby emergency safehouses, patrol zones, and hospitals.</p>
+            <p class="sect-subtitle-hi hide">आस-पास के पुलिस स्टेशनों, अस्पतालों और सुरक्षित आश्रयों की लाइव खोज प्रणाली।</p>
+          </div>
+
+          <!-- Radar/Map Interactive Canvas Area -->
+          <div class="map-viewport-wrapper glass-panel">
+            <div class="radar-status-bar">
+              <span class="radar-scan-text"><i class="fa-solid fa-crosshairs fa-spin"></i> GPS: Active Simulation</span>
+              <span class="radar-accuracy">Acc: 3m</span>
+            </div>
+            
+            <div class="canvas-container">
+              <!-- Beautiful Neon Map/Radar Simulator Canvas -->
+              <canvas id="safety-radar-canvas" width="340" height="280"></canvas>
+              
+              <!-- Floating Map Overlay Controls -->
+              <div class="map-controls">
+                <button id="radar-filter-all" class="map-ctrl-btn active" title="Show All"><i class="fa-solid fa-layer-group"></i></button>
+                <button id="radar-filter-police" class="map-ctrl-btn" title="Police"><i class="fa-solid fa-building-shield"></i></button>
+                <button id="radar-filter-safehouse" class="map-ctrl-btn" title="Safe Houses"><i class="fa-solid fa-house-chimney-medical"></i></button>
+              </div>
+            </div>
+
+            <!-- Custom Legend -->
+            <div class="map-legend">
+              <div class="legend-item"><span class="legend-dot user-dot"></span> <span class="legend-txt-en">You</span><span class="legend-txt-hi hide">आप</span></div>
+              <div class="legend-item"><span class="legend-dot police-dot"></span> <span class="legend-txt-en">Police</span><span class="legend-txt-hi hide">पुलिस</span></div>
+              <div class="legend-item"><span class="legend-dot safehouse-dot"></span> <span class="legend-txt-en">Safe Zone</span><span class="legend-txt-hi hide">सुरक्षित</span></div>
+            </div>
+          </div>
+
+          <!-- Dynamic Walk Metrics Panel -->
+          <div class="radar-action-panel">
+            <div class="map-metrics-bar hide" id="map-metrics-bar">
+              <div class="metric-item">
+                <span class="m-lbl-en">Distance</span>
+                <span class="m-lbl-hi hide">दूरी</span>
+                <strong id="metric-dist">400m</strong>
+              </div>
+              <div class="metric-item">
+                <span class="m-lbl-en">Time</span>
+                <span class="m-lbl-hi hide">समय</span>
+                <strong id="metric-eta">4 mins</strong>
+              </div>
+              <div class="metric-item">
+                <span class="m-lbl-en">Safety Index</span>
+                <span class="m-lbl-hi hide">सुरक्षा दर</span>
+                <strong style="color: var(--neon-green)">9.8/10</strong>
+              </div>
+            </div>
+            
+            <div class="map-btn-row">
+              <button id="radar-route-btn" class="primary-btn map-nav-btn">
+                <i class="fa-solid fa-route"></i>
+                <span class="btn-text-en">Find Safest Path</span>
+                <span class="btn-text-hi hide">सुरक्षित मार्ग खोजें</span>
+              </button>
+              <button id="radar-walk-btn" class="primary-btn map-walk-btn hide">
+                <i class="fa-solid fa-person-walking"></i>
+                <span class="btn-text-en">Start Walk</span>
+                <span class="btn-text-hi hide">चलना शुरू करें</span>
+              </button>
+            </div>
+            
+            <p class="radar-desc-en">Computes safest routes with active lighting, police patrol tracks, and high crowds.</p>
+            <p class="radar-desc-hi hide">सक्रिय प्रकाश व्यवस्था और पुलिस गश्त के आधार पर सबसे सुरक्षित मार्ग की गणना करता है।</p>
+          </div>
+        </section>
+
+
+        <!-- ==================== SCREEN 5: AUDIO WITNESS ==================== -->
+        <section id="screen-witness" class="app-screen">
+          <div class="screen-back-btn" onclick="switchScreen('screen-home')">
+            <i class="fa-solid fa-chevron-left"></i>
+            <span class="back-text-en">Dashboard</span>
+            <span class="back-text-hi hide">डैशबोर्ड</span>
+          </div>
+
+          <div class="screen-header">
+            <h2 class="sect-title-en">Audio Witness Evidence</h2>
+            <h2 class="sect-title-hi hide">ऑडियो साक्ष्य रिकॉर्डर</h2>
+            <p class="sect-subtitle-en">Record audio evidence discreetly. Recordings are saved locally and simulated to auto-upload to cloud storage.</p>
+            <p class="sect-subtitle-hi hide">असहज स्थितियों में गुप्त रूप से बातचीत और आवाजें रिकॉर्ड करें जो सुरक्षित रूप से अपलोड हो जाती हैं।</p>
+          </div>
+
+          <!-- Visual Audio Recorder Box -->
+          <div class="glass-panel recorder-box">
+            
+            <div class="recorder-status">
+              <div class="rec-dot" id="recorder-dot"></div>
+              <span id="recorder-text-en">Standby Mode</span>
+              <span id="recorder-text-hi" class="hide">तैयार मोड (स्टैंडबाई)</span>
+            </div>
+
+            <!-- Waveform Canvas Display -->
+            <div class="waveform-container">
+              <canvas id="waveform-canvas" width="320" height="100"></canvas>
+            </div>
+
+            <div class="record-time" id="recorder-timer">00:00</div>
+
+            <!-- Recording Control Button -->
+            <div class="recorder-actions">
+              <button id="record-btn" class="record-button-main" aria-label="Toggle Recording">
+                <i class="fa-solid fa-microphone mic-icon"></i>
+              </button>
+            </div>
+
+            <p class="recorder-helper-en">Tap mic to begin recording. The app hides screen recording indicator for safety.</p>
+            <p class="recorder-helper-hi hide">रिकॉर्डिंग शुरू करने के लिए माइक दबाएं। सुरक्षा के लिए स्क्रीन इंडिकेटर छिपा रहता है।</p>
+          </div>
+
+          <!-- Witness Log Table -->
+          <div class="recordings-log-box">
+            <h3 class="list-heading-en">Evidence Logs</h3>
+            <h3 class="list-heading-hi hide">साक्ष्य रिकॉर्ड्स</h3>
+            <div id="recordings-list" class="recordings-list">
+              <!-- Dynamically populated files -->
+              <div class="empty-state-recordings">
+                <i class="fa-solid fa-folder-open"></i>
+                <p class="empty-text-en">No audio clips recorded yet.</p>
+                <p class="empty-text-hi hide">अभी तक कोई रिकॉर्डिंग नहीं की गई है।</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ==================== SCREEN 6: HELP/DIAL DIRECTORY ==================== -->
+        <section id="screen-helplines" class="app-screen">
+          <div class="screen-header">
+            <h2 class="sect-title-en">Emergency Helplines</h2>
+            <h2 class="sect-title-hi hide">आपातकालीन हेल्पलाइन</h2>
+            <p class="sect-subtitle-en">Quick access one-tap dialing for all critical security, distress, and medical national lines.</p>
+            <p class="sect-subtitle-hi hide">सभी महत्वपूर्ण राष्ट्रीय सुरक्षा, महिला सेल और चिकित्सा संकट नंबरों की सूची।</p>
+          </div>
+
+          <!-- Search Helpline Bar -->
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="helpline-search" placeholder="Search helpline / खोजें...">
+          </div>
+
+          <!-- Helplines List -->
+          <div class="helpline-grid" id="helpline-grid-container">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+
+        <!-- ==================== SCREEN 7: SELF DEFENSE LIBRARY ==================== -->
+        <section id="screen-defense" class="app-screen">
+          <div class="screen-header">
+            <h2 class="sect-title-en">Self Defense Academy</h2>
+            <h2 class="sect-title-hi hide">आत्मरक्षा प्रशिक्षण</h2>
+            <p class="sect-subtitle-en">Learn key escape maneuvers, awareness guidelines, and legal rights designed for quick reading.</p>
+            <p class="sect-subtitle-hi hide">खतरे के समय बचने की तकनीकें, मानसिक सतर्कता नियम, और महिलाओं के कानूनी अधिकार।</p>
+          </div>
+
+          <!-- Academy Filter Tabs -->
+          <div class="defense-tabs">
+            <button class="defense-tab active" data-category="physical">
+              <span class="en-lbl">Moves</span>
+              <span class="hi-lbl hide">चालें (तकनीक)</span>
+            </button>
+            <button class="defense-tab" data-category="mental">
+              <span class="en-lbl">Survival Tips</span>
+              <span class="hi-lbl hide">सुरक्षा नियम</span>
+            </button>
+            <button class="defense-tab" data-category="legal">
+              <span class="en-lbl">Legal Rights</span>
+              <span class="hi-lbl hide">कानूनी अधिकार</span>
+            </button>
+          </div>
+
+          <!-- Defense Cards Container -->
+          <div class="defense-content" id="defense-cards-container">
+            <!-- Cards will be populated dynamically -->
+          </div>
+        </section>
+
+        <!-- ==================== SCREEN 8: SETTINGS ==================== -->
+        <section id="screen-settings" class="app-screen">
+          <div class="screen-back-btn" onclick="switchScreen('screen-home')">
+            <i class="fa-solid fa-chevron-left"></i>
+            <span class="back-text-en">Dashboard</span>
+            <span class="back-text-hi hide">डैशबोर्ड</span>
+          </div>
+
+          <div class="screen-header">
+            <h2 class="sect-title-en">Settings & Profile</h2>
+            <h2 class="sect-title-hi hide">सेटिंग्स और प्रोफाइल</h2>
+            <p class="sect-subtitle-en">Configure your personal safety details, secure PIN configurations, and user profile parameters.</p>
+            <p class="sect-subtitle-hi hide">अपने व्यक्तिगत सुरक्षा विवरण और अलार्म विकल्पों को सेट करें।</p>
+          </div>
+
+          <div class="glass-panel settings-form">
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label for="settings-pin" class="label-en">Deactivation Safety PIN</label>
+              <label for="settings-pin" class="label-hi hide">सुरक्षा डीएक्टिवेशन पिन</label>
+              <input type="password" id="settings-pin" value="1234" maxlength="4" placeholder="e.g. 1234" required>
+              <p class="settings-helper-en">PIN required to disable active sirens and flashing overlays.</p>
+              <p class="settings-helper-hi hide">अलार्म बजाने की स्थिति में साइरन बंद करने के लिए यह पिन आवश्यक है।</p>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label for="settings-user-name" class="label-en">User Identity Name</label>
+              <label for="settings-user-name" class="label-hi hide">यूज़र का नाम</label>
+              <input type="text" id="settings-user-name" value="Nisha Sharma" placeholder="Your Name" required>
+            </div>
+
+            <button id="save-settings-btn" class="primary-btn">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span class="btn-text-en">Save Configurations</span>
+              <span class="btn-text-hi hide">सेटिंग्स सुरक्षित करें</span>
+            </button>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- ==================== APP FOOTER / NAVIGATION BAR ==================== -->
+      <footer class="app-footer-nav">
+        <button class="nav-item active" data-screen="screen-home" aria-label="Dashboard">
+          <i class="fa-solid fa-house-chimney"></i>
+          <span class="nav-label-en">Home</span>
+          <span class="nav-label-hi hide">मुख्य</span>
+        </button>
+        <button class="nav-item" data-screen="screen-contacts" aria-label="Guardians">
+          <i class="fa-solid fa-user-shield"></i>
+          <span class="nav-label-en">Guardians</span>
+          <span class="nav-label-hi hide">अभिभावक</span>
+        </button>
+        <button class="nav-item" data-screen="screen-helplines" aria-label="Helplines">
+          <i class="fa-solid fa-phone-flip"></i>
+          <span class="nav-label-en">Helplines</span>
+          <span class="nav-label-hi hide">हेल्पलाइन</span>
+        </button>
+        <button class="nav-item" data-screen="screen-defense" aria-label="Guides">
+          <i class="fa-solid fa-book-open-reader"></i>
+          <span class="nav-label-en">Academy</span>
+          <span class="nav-label-hi hide">एकेडमी</span>
+        </button>
+      </footer>
+
+      <!-- ==================== STROBE/FLASH & SIREN OVERLAY ==================== -->
+      <div id="strobe-siren-overlay" class="strobe-siren-overlay hide">
+        <div class="overlay-top-warning">
+          <i class="fa-solid fa-triangle-exclamation warning-icon pulse"></i>
+          <h2 class="warning-title-en">SOS EMERGENCY ACTIVE</h2>
+          <h2 class="warning-title-hi hide">आपातकालीन संकट सक्रिय</h2>
+        </div>
+        
+        <div class="strobe-actions">
+          <div class="strobe-status-box">
+            <span class="lbl-en">SIREN ACTIVE</span>
+            <span class="lbl-hi hide">साइरन सक्रिय है</span>
+            <div class="decibel-meter">
+              <div class="meter-bar active" style="--h: 90%"></div>
+              <div class="meter-bar active" style="--h: 70%"></div>
+              <div class="meter-bar active" style="--h: 95%"></div>
+              <div class="meter-bar active" style="--h: 60%"></div>
+              <div class="meter-bar active" style="--h: 80%"></div>
+            </div>
+          </div>
+          
+          <button id="deactivate-sos-btn" class="sos-deactivate-btn">
+            <i class="fa-solid fa-power-off"></i>
+            <span class="btn-text-en">DEACTIVATE</span>
+            <span class="btn-text-hi hide">बंद करें</span>
+          </button>
+        </div>
+        <p class="overlay-note-en">Alerting all emergency guardians with current location link: <strong>https://maps.google.com/?q=28.6139,77.2090</strong></p>
+        <p class="overlay-note-hi hide">सभी अभिभावकों को आपकी लाइव लोकेशन का लिंक भेज दिया गया है: <strong>https://maps.google.com/?q=28.6139,77.2090</strong></p>
+      </div>
+
+      <!-- ==================== PIN ENTRY KEYPAD MODAL ==================== -->
+      <div id="pin-entry-overlay" class="pin-entry-overlay hide">
+        <div class="pin-box" id="pin-entry-box">
+          <img src="up-police-logo.png" alt="UP Police Logo" class="pin-logo-img">
+          <h2 class="pin-quote">सुरक्षा आपकी, संकल्प हमारा</h2>
+          <h3 class="pin-title-en">Enter Safety PIN</h3>
+          <h3 class="pin-title-hi hide">सुरक्षा पिन दर्ज करें</h3>
+          <p class="pin-subtitle-en">Deactivation requires authorization (Default: 1234)</p>
+          <p class="pin-subtitle-hi hide">अलार्म बंद करने के लिए पिन चाहिए (डिफ़ॉल्ट: 1234)</p>
+          
+          <div class="pin-display">
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+          </div>
+          
+          <div class="pin-keypad">
+            <button class="pin-key" data-val="1">1</button>
+            <button class="pin-key" data-val="2">2</button>
+            <button class="pin-key" data-val="3">3</button>
+            <button class="pin-key" data-val="4">4</button>
+            <button class="pin-key" data-val="5">5</button>
+            <button class="pin-key" data-val="6">6</button>
+            <button class="pin-key" data-val="7">7</button>
+            <button class="pin-key" data-val="8">8</button>
+            <button class="pin-key" data-val="9">9</button>
+            <button class="pin-key text-key" data-val="clear">CLR</button>
+            <button class="pin-key" data-val="0">0</button>
+            <button class="pin-key text-key" data-val="back"><i class="fa-solid fa-delete-left"></i></button>
+          </div>
+          
+          <button id="pin-cancel-btn" class="pin-cancel-btn">
+            <span class="en-lbl">Cancel</span>
+            <span class="hi-lbl hide">रद्द करें</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ==================== INCOMING FAKE CALL FULLSCREEN MODAL ==================== -->
+      <div id="fakecall-ring-overlay" class="fakecall-ring-overlay hide">
+        <div class="caller-profile-section">
+          <div class="caller-avatar">
+            <i class="fa-solid fa-user-ninja"></i>
+          </div>
+          <h2 id="ring-caller-name" class="caller-name">Mom 💖</h2>
+          <span class="ring-subtitle-en">Incoming Safe-Call...</span>
+          <span class="ring-subtitle-hi hide">इनकमिंग सुरक्षा-कॉल...</span>
+        </div>
+
+        <div class="incoming-actions">
+          <!-- Decline Button -->
+          <button id="decline-fakecall-btn" class="call-decline-btn" aria-label="Decline Call">
+            <i class="fa-solid fa-phone-slash"></i>
+          </button>
+          
+          <!-- Accept Button -->
+          <button id="accept-fakecall-btn" class="call-accept-btn" aria-label="Accept Call">
+            <i class="fa-solid fa-phone"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- ==================== FAKE CALL ACTIVE IN-CALL PANEL ==================== -->
+      <div id="fakecall-active-overlay" class="fakecall-active-overlay hide">
+        <div class="active-caller-header">
+          <h2 id="active-caller-name" class="caller-name">Mom 💖</h2>
+          <span id="active-call-timer" class="call-timer">00:00</span>
+        </div>
+
+        <div class="active-call-keypad">
+          <div class="keypad-row">
+            <button class="keypad-btn call-digit" data-digit="1"><i class="fa-solid fa-1"></i><span>1</span></button>
+            <button class="keypad-btn call-digit" data-digit="2"><i class="fa-solid fa-2"></i><span>2 (ABC)</span></button>
+            <button class="keypad-btn call-digit" data-digit="3"><i class="fa-solid fa-3"></i><span>3 (DEF)</span></button>
+          </div>
+          <div class="keypad-row">
+            <button class="keypad-btn call-digit" data-digit="4"><i class="fa-solid fa-4"></i><span>4 (GHI)</span></button>
+            <button class="keypad-btn call-digit" data-digit="5"><i class="fa-solid fa-5"></i><span>5 (JKL)</span></button>
+            <button class="keypad-btn call-digit" data-digit="6"><i class="fa-solid fa-6"></i><span>6 (MNO)</span></button>
+          </div>
+          <div class="keypad-row">
+            <button class="keypad-btn" id="fakecall-speaker-btn"><i class="fa-solid fa-volume-high"></i><span>Speaker</span></button>
+            <button class="keypad-btn call-digit" data-digit="0"><i class="fa-solid fa-0"></i><span>0</span></button>
+            <button class="keypad-btn"><i class="fa-solid fa-microphone-slash"></i><span>Mute</span></button>
+          </div>
+        </div>
+
+        <!-- Speaker Voice Text Subtitle Overlay (to help user act along) -->
+        <div class="speaker-caption-box">
+          <i class="fa-solid fa-quote-left caption-quote"></i>
+          <span id="speaker-caption-en" class="caption-text">Voice Playing: "Hey! Where are you? I'm waiting for you at the market entrance."</span>
+          <span id="speaker-caption-hi" class="caption-text hide">आवाज चल रही है: "अरे! तुम कहाँ हो? मैं बाज़ार के प्रवेश द्वार पर तुम्हारा इंतजार कर रही हूँ।"</span>
+        </div>
+
+        <div class="active-call-actions">
+          <button id="end-fakecall-btn" class="call-end-btn" aria-label="End Call">
+            <i class="fa-solid fa-phone-slash"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Custom Alert Toast notification -->
+  <div id="custom-toast" class="custom-toast hide">
+    <i class="fa-solid fa-bell toast-icon"></i>
+    <span id="toast-message">Toast Message</span>
+  </div>
+
+  <!-- JS Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
