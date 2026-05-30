@@ -169,6 +169,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Create customized toast notifications system
   showToast("System Active & Secured", "कवच सक्रिय और सुरक्षित");
+
+  // Register Service Worker for PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('Service Worker Registered!', reg))
+      .catch(err => console.error('Service Worker Registration Failed!', err));
+  }
 });
 
 // Update Simulated Device Clock
@@ -562,6 +569,7 @@ function initSOSButton() {
 
   const startHold = (e) => {
     e.preventDefault();
+    if (state.sosHoldInterval) return; // Prevent multiple intervals
     startAudioContext();
     
     state.sosHoldProgress = 0;
@@ -583,6 +591,7 @@ function initSOSButton() {
 
       if (state.sosHoldProgress >= maxHoldMs) {
         clearInterval(state.sosHoldInterval);
+        state.sosHoldInterval = null; // Clear the interval state
         progressBar.style.strokeDashoffset = 283;
         countdownOverlay.classList.add("hide");
         triggerSOSAlert();
@@ -590,7 +599,10 @@ function initSOSButton() {
     }, progressStepMs);
   };
 
-  const endHold = () => {
+  const endHold = (e) => {
+    if (e && e.cancelable) {
+      e.preventDefault();
+    }
     if (state.sosHoldInterval) {
       clearInterval(state.sosHoldInterval);
       state.sosHoldInterval = null;
@@ -652,12 +664,62 @@ function triggerSOSAlert() {
   
   showToast("SOS Alert Dispatched!", "आपातकालीन संदेश भेजा गया!");
   
-  // Send actual browser Alert to simulate hardware SMS delivery
+  // Removed blocking browser alert. Redirect directly to WhatsApp.
   setTimeout(() => {
     if (state.sosActive) {
-      alert(state.currentLanguage === 'en' ? alertMsgEn : alertMsgHi);
+      sendLocationToSister();
     }
-  }, 1000);
+  }, 500);
+}
+
+function sendLocationToSister() {
+  let targetContact = state.contacts.find(c => c.name.toLowerCase().includes('sister') || c.name.includes('बहन'));
+  
+  if (!targetContact) {
+    if (state.contacts.length > 0) {
+      targetContact = state.contacts[0];
+    } else {
+      showToast("No guardians found to send location!", "लोकेशन भेजने के लिए कोई संरक्षक नहीं मिला!");
+      return;
+    }
+  }
+
+  let originalPhone = targetContact.phone;
+  let phone = targetContact.phone.replace(/\D/g, '');
+  if (phone.length === 10) phone = "91" + phone;
+
+  showToast("Detecting live location...", "लाइव लोकेशन पता की जा रही है...");
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => openWhatsApp(phone, originalPhone, pos.coords.latitude, pos.coords.longitude, targetContact.name),
+      (err) => openWhatsApp(phone, originalPhone, 28.6139, 77.2090, targetContact.name),
+      { enableHighAccuracy: false, timeout: 3000 }
+    );
+  } else {
+    openWhatsApp(phone, originalPhone, 28.6139, 77.2090, targetContact.name);
+  }
+}
+
+function openWhatsApp(phone, originalPhone, lat, lng, name) {
+  const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
+  const messageEn = `*SOS EMERGENCY!* I need help immediately. My current live location is: ${mapsLink}`;
+  const messageHi = `*आपातकाल (SOS)!* मुझे तुरंत मदद चाहिए। मेरी वर्तमान लोकेशन यहाँ है: ${mapsLink}`;
+  
+  const finalMsg = state.currentLanguage === 'en' ? messageEn : messageHi;
+  
+  // api.whatsapp.com is generally more reliable across different devices/desktops
+  const waUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(finalMsg)}`;
+  
+  showToast(`Alerting ${name} via WhatsApp & Call...`, `${name} को कॉल और मैसेज किया जा रहा है...`);
+  
+  // Open WhatsApp in a new tab
+  window.open(waUrl, '_blank');
+  
+  // Initiate a direct phone call in the current window
+  setTimeout(() => {
+    window.location.href = `tel:${originalPhone}`;
+  }, 300);
 }
 
 function deactivateSOSAlert() {

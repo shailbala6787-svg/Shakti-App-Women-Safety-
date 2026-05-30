@@ -25,15 +25,15 @@ const puppeteer = require('puppeteer');
 
     // Click SOS button
     console.log('Testing SOS Button...');
-    const sosBtn = await page.$('#sos-btn');
+    const sosBtn = await page.$('#sos-button');
     if (sosBtn) {
       await page.evaluate(() => {
-        const btn = document.getElementById('sos-btn');
+        const btn = document.getElementById('sos-button');
         btn.dispatchEvent(new MouseEvent('mousedown'));
       });
       await new Promise(r => setTimeout(r, 3100)); // wait for hold
       await page.evaluate(() => {
-        const btn = document.getElementById('sos-btn');
+        const btn = document.getElementById('sos-button');
         btn.dispatchEvent(new MouseEvent('mouseup'));
       });
     } else {
@@ -45,12 +45,17 @@ const puppeteer = require('puppeteer');
 
     // Try deactivation with wrong PIN
     console.log('Testing Deactivation (Wrong PIN)...');
-    const deactivateBtn = await page.$('#deactivate-btn');
+    const deactivateBtn = await page.$('#deactivate-sos-btn');
     if (deactivateBtn) {
       await deactivateBtn.click();
       await new Promise(r => setTimeout(r, 500));
       // Type wrong pin
-      await page.type('#pin-input', '5555');
+      await page.evaluate(() => {
+        document.querySelector('.pin-key[data-val="5"]').click();
+        document.querySelector('.pin-key[data-val="5"]').click();
+        document.querySelector('.pin-key[data-val="5"]').click();
+        document.querySelector('.pin-key[data-val="5"]').click();
+      });
       await new Promise(r => setTimeout(r, 500)); // allow shake animation
     } else {
       console.log('Deactivate button not found!');
@@ -63,10 +68,14 @@ const puppeteer = require('puppeteer');
       await new Promise(r => setTimeout(r, 500));
       // Try to clear the input before typing just in case
       await page.evaluate(() => {
-        const pinInput = document.getElementById('pin-input');
-        if (pinInput) pinInput.value = '';
+        document.querySelector('.pin-key[data-val="clear"]').click();
       });
-      await page.type('#pin-input', '1234');
+      await page.evaluate(() => {
+        document.querySelector('.pin-key[data-val="1"]').click();
+        document.querySelector('.pin-key[data-val="2"]').click();
+        document.querySelector('.pin-key[data-val="3"]').click();
+        document.querySelector('.pin-key[data-val="4"]').click();
+      });
       await new Promise(r => setTimeout(r, 500));
     }
 
