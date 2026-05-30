@@ -73,13 +73,19 @@ body {
 
 /* --- Dynamic Background Ambient Glows --- */
 .bg-glow {
-  display: none;
+  display: block;
   position: absolute;
   border-radius: 50%;
-  filter: blur(120px);
+  filter: blur(140px);
   z-index: 0;
   pointer-events: none;
-  opacity: 0.25;
+  opacity: 0.35;
+  animation: glowFloat 15s infinite alternate ease-in-out;
+}
+@keyframes glowFloat {
+  0% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.1) translate(30px, -20px); }
+  100% { transform: scale(1.2) translate(-20px, 40px); }
 }
 .bg-glow-1 {
   background: var(--neon-red);
@@ -204,9 +210,10 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border-color);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(15px);
+  border-bottom: 1px solid rgba(0, 51, 102, 0.15);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
   z-index: 100;
 }
 
@@ -578,8 +585,10 @@ body {
 }
 
 .utility-card {
-  background: var(--bg-dark-card);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 16px;
   padding: 12px 16px;
   display: flex;
@@ -591,11 +600,10 @@ body {
   transition: var(--transition-smooth);
 }
 .utility-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.02);
   border-color: var(--border-glow);
-  box-shadow: 0 6px 15px rgba(255, 45, 85, 0.05);
-  background: #ffffff;
-  box-shadow: 0 6px 15px rgba(0, 51, 102, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 25px rgba(0, 51, 102, 0.15);
 }
 
 .card-icon-wrapper {
@@ -1708,6 +1716,42 @@ body {
   color: var(--text-secondary);
   margin-bottom: 22px;
 }
+
+/* ==================== HELPLINES SEARCH BOX ==================== */
+.search-box {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(0, 51, 102, 0.2);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+  transition: var(--transition-smooth);
+}
+.search-box:focus-within {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: var(--neon-teal);
+  box-shadow: 0 0 10px rgba(0, 51, 102, 0.15);
+}
+.search-icon {
+  color: var(--text-muted);
+  margin-right: 10px;
+  font-size: 14px;
+}
+.search-box input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.search-box input::placeholder {
+  color: var(--text-muted);
+}
+
 .pin-display {
   display: flex;
   gap: 16px;
