@@ -163,6 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initSettings();
   initPinKeypad();
   initBattery();
+  initShakeSensor();
   
   // Set random safety tip of the day
   setDailyTip();
@@ -577,6 +578,7 @@ function initSOSButton() {
     countdownNumber.textContent = "3";
     
     playTickSound();
+    if (navigator.vibrate) navigator.vibrate(50);
 
     state.sosHoldInterval = setInterval(() => {
       state.sosHoldProgress += progressStepMs;
@@ -595,6 +597,8 @@ function initSOSButton() {
         progressBar.style.strokeDashoffset = 283;
         countdownOverlay.classList.add("hide");
         triggerSOSAlert();
+      } else {
+        if (navigator.vibrate) navigator.vibrate(50);
       }
     }, progressStepMs);
   };
@@ -622,6 +626,42 @@ function initSOSButton() {
   // Deactivate Overlay SOS button trigger PIN input modal
   document.getElementById("deactivate-sos-btn").addEventListener("click", () => {
     openPinLockModal();
+  });
+}
+
+function initShakeSensor() {
+  let lastX, lastY, lastZ;
+  let lastUpdate = 0;
+  const shakeThreshold = 20; // threshold for vigorous shake
+
+  window.addEventListener('devicemotion', (event) => {
+    if (state.sosActive) return; // Ignore if already active
+
+    const current = event.accelerationIncludingGravity;
+    if (!current || current.x === null) return;
+
+    const currentTime = Date.now();
+    if ((currentTime - lastUpdate) > 100) {
+      const diffTime = (currentTime - lastUpdate);
+      lastUpdate = currentTime;
+
+      const x = current.x;
+      const y = current.y;
+      const z = current.z;
+
+      if (lastX !== undefined) {
+        const speed = Math.abs(x + y + z - lastX - lastY - lastZ) / diffTime * 10000;
+        if (speed > shakeThreshold * 100) {
+          console.log("Shake detected!");
+          // Trigger SOS directly
+          triggerSOSAlert();
+        }
+      }
+
+      lastX = x;
+      lastY = y;
+      lastZ = z;
+    }
   });
 }
 
@@ -654,6 +694,7 @@ function triggerSOSAlert() {
 
   // Sound highest siren
   startSirenAlarm();
+  if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400, 200, 400]);
 
   // Create simulated notification to user about SMS being dispatched
   let contactsListText = state.contacts.map(c => `${c.name} (${c.phone})`).join(", ");
@@ -668,6 +709,16 @@ function triggerSOSAlert() {
   setTimeout(() => {
     if (state.sosActive) {
       sendLocationToSister();
+      
+      // Start continuous location pings
+      if (state.sosLocationInterval) clearInterval(state.sosLocationInterval);
+      state.sosLocationInterval = setInterval(() => {
+        if (!state.sosActive) {
+          clearInterval(state.sosLocationInterval);
+          return;
+        }
+        showToast("Live Location Ping Sent", "लाइव लोकेशन गार्जियन को भेजी गई");
+      }, 10000);
     }
   }, 500);
 }
@@ -735,6 +786,13 @@ function deactivateSOSAlert() {
   banner.querySelector(".status-text-hi").textContent = "कवच सक्रिय • हम आपके साथ हैं";
 
   stopSirenAlarm();
+  if (navigator.vibrate) navigator.vibrate(0);
+  
+  if (state.sosLocationInterval) {
+    clearInterval(state.sosLocationInterval);
+    state.sosLocationInterval = null;
+  }
+  
   showToast("SOS Alert Deactivated", "आपातकालीन अलार्म बंद किया गया");
 }
 
@@ -1364,8 +1422,8 @@ function stopAudioRecording() {
   
   recordBtn.classList.remove("recording");
   recDot.classList.remove("active");
-  recTextEn.textContent = "Evidence Auto-Uploaded";
-  recTextHi.textContent = "साक्ष्य सुरक्षित स्टोर किया गया";
+  recTextEn.textContent = "Processing Evidence...";
+  recTextHi.textContent = "साक्ष्य प्रोसेस हो रहा है...";
   
   if (state.microphoneStream) {
     state.microphoneStream.getTracks().forEach(track => track.stop());
@@ -1381,15 +1439,53 @@ function stopAudioRecording() {
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const duration = document.getElementById("recorder-timer").textContent;
   
-  state.recordingsLog.unshift({
-    id: Date.now(),
-    title: `Evidence_Sec_${state.recordingsLog.length + 1}.wav`,
-    time: `${timeStr} (Cloud Encrypted)`,
-    duration: duration
-  });
+  // Cloud upload simulation
+  const uploadContainer = document.getElementById("cloud-upload-container");
+  const uploadBar = document.getElementById("cloud-upload-bar");
   
-  renderRecordingsList();
-  showToast("Evidence Uploaded to Secure Cloud", "साक्ष्य सुरक्षित सर्वर पर अपलोड");
+  if (uploadContainer && uploadBar) {
+    uploadContainer.classList.remove("hide");
+    uploadBar.style.width = "0%";
+    
+    let progress = 0;
+    const uploadInterval = setInterval(() => {
+      progress += (Math.random() * 15 + 5); // Add random chunk
+      if (progress >= 100) progress = 100;
+      uploadBar.style.width = progress + "%";
+      
+      if (progress === 100) {
+        clearInterval(uploadInterval);
+        setTimeout(() => {
+          uploadContainer.classList.add("hide");
+          uploadBar.style.width = "0%";
+          recTextEn.textContent = "Evidence Auto-Uploaded";
+          recTextHi.textContent = "साक्ष्य सुरक्षित स्टोर किया गया";
+          
+          state.recordingsLog.unshift({
+            id: Date.now(),
+            title: `Evidence_Sec_${state.recordingsLog.length + 1}.wav`,
+            time: `${timeStr} (Cloud Encrypted)`,
+            duration: duration
+          });
+          
+          renderRecordingsList();
+          showToast("Evidence Uploaded to Secure Cloud", "साक्ष्य सुरक्षित सर्वर पर अपलोड");
+        }, 600);
+      }
+    }, 150);
+  } else {
+    recTextEn.textContent = "Evidence Auto-Uploaded";
+    recTextHi.textContent = "साक्ष्य सुरक्षित स्टोर किया गया";
+    
+    state.recordingsLog.unshift({
+      id: Date.now(),
+      title: `Evidence_Sec_${state.recordingsLog.length + 1}.wav`,
+      time: `${timeStr} (Cloud Encrypted)`,
+      duration: duration
+    });
+    renderRecordingsList();
+    showToast("Evidence Uploaded to Secure Cloud", "साक्ष्य सुरक्षित सर्वर पर अपलोड");
+  }
 }
 
 function drawStaticWaveform() {
