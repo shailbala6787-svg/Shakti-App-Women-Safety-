@@ -744,8 +744,11 @@ function sendLocationToSister() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => openWhatsApp(phone, originalPhone, pos.coords.latitude, pos.coords.longitude, targetContact.name),
-      (err) => openWhatsApp(phone, originalPhone, 28.6139, 77.2090, targetContact.name),
-      { enableHighAccuracy: false, timeout: 3000 }
+      (err) => {
+        console.warn("Geolocation failed on system, using fallback.", err);
+        openWhatsApp(phone, originalPhone, 28.6139, 77.2090, targetContact.name);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   } else {
     openWhatsApp(phone, originalPhone, 28.6139, 77.2090, targetContact.name);
@@ -759,15 +762,29 @@ function openWhatsApp(phone, originalPhone, lat, lng, name) {
   
   const finalMsg = state.currentLanguage === 'en' ? messageEn : messageHi;
   
-  // api.whatsapp.com is generally more reliable across different devices/desktops
-  const waUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(finalMsg)}`;
+  // Using wa.me and whatsapp:// fallback for better native Desktop app support
+  const isDesktop = !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+  
+  let waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(finalMsg)}`;
+  if (isDesktop) {
+    // Attempt native app URI on desktop if preferred, but wa.me usually handles it best
+    waUrl = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(finalMsg)}`;
+  }
   
   showToast(`Alerting ${name} via WhatsApp & Call...`, `${name} को कॉल और मैसेज किया जा रहा है...`);
   
-  // Open WhatsApp in a new tab
+  // Open WhatsApp in a new tab (or prompt native app)
   window.open(waUrl, '_blank');
   
+  // Fallback to wa.me if whatsapp:// fails on desktop
+  if (isDesktop) {
+    setTimeout(() => {
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(finalMsg)}`, '_blank');
+    }, 500);
+  }
+  
   // Initiate a direct phone call in the current window
+
   setTimeout(() => {
     window.location.href = `tel:${originalPhone}`;
   }, 300);
