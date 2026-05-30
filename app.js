@@ -760,6 +760,12 @@ function openWhatsApp(phone, originalPhone, lat, lng, name) {
   const messageEn = `*SOS EMERGENCY!* I need help immediately. My current live location is: ${mapsLink}`;
   const messageHi = `*आपातकाल (SOS)!* मुझे तुरंत मदद चाहिए। मेरी वर्तमान लोकेशन यहाँ है: ${mapsLink}`;
   
+  // Dynamically update UI links with actual coordinates
+  const linkEn = document.getElementById("sos-location-link-en");
+  const linkHi = document.getElementById("sos-location-link-hi");
+  if (linkEn) linkEn.textContent = mapsLink;
+  if (linkHi) linkHi.textContent = mapsLink;
+  
   const finalMsg = state.currentLanguage === 'en' ? messageEn : messageHi;
   
   // Using wa.me and whatsapp:// fallback for better native Desktop app support
