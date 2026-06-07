@@ -342,7 +342,41 @@
             </div>
           </div>
 
+          <!-- Selected Point Info Card (shown on tap) -->
+          <div id="radar-point-info-card" class="radar-point-info-card hide">
+            <div class="rpi-header">
+              <span id="rpi-type" class="rpi-type-badge">🚔 Police</span>
+              <span id="rpi-name" class="rpi-name">Police Precinct No. 4</span>
+            </div>
+            <div class="rpi-metrics">
+              <div class="rpi-metric">
+                <i class="fa-solid fa-location-arrow" style="color:#00e5ff"></i>
+                <span id="rpi-dist">--</span>
+                <small class="rpi-lbl-en">away</small>
+                <small class="rpi-lbl-hi hide">दूर</small>
+              </div>
+              <div class="rpi-metric">
+                <i class="fa-solid fa-person-walking" style="color:#39ff14"></i>
+                <span id="rpi-time">--</span>
+              </div>
+              <div class="rpi-metric">
+                <i class="fa-solid fa-compass" style="color:#ffab00"></i>
+                <span id="rpi-dir">--</span>
+              </div>
+            </div>
+            <div class="rpi-footer">
+              <span class="rpi-phone-lbl">📞</span>
+              <span id="rpi-phone" class="rpi-phone">--</span>
+              <a id="rpi-call-btn" href="tel:" class="rpi-call-btn">
+                <i class="fa-solid fa-phone"></i>
+                <span class="rpi-lbl-en">Call</span>
+                <span class="rpi-lbl-hi hide">कॉल</span>
+              </a>
+            </div>
+          </div>
+
           <!-- Dynamic Walk Metrics Panel -->
+
           <div class="radar-action-panel">
             <div class="map-metrics-bar hide" id="map-metrics-bar">
               <div class="metric-item">
@@ -598,6 +632,12 @@
               <div class="meter-bar active" style="--h: 80%"></div>
             </div>
           </div>
+          
+          <button id="manual-whatsapp-btn" class="whatsapp-send-btn">
+            <i class="fa-brands fa-whatsapp"></i>
+            <span class="btn-text-en">SEND WHATSAPP NOW</span>
+            <span class="btn-text-hi hide">व्हाट्सएप भेजें</span>
+          </button>
           
           <button id="deactivate-sos-btn" class="sos-deactivate-btn">
             <i class="fa-solid fa-power-off"></i>

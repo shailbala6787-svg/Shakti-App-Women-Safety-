@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Reset PIN - Shakti App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1a1a2e;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      flex-direction: column;
+      gap: 20px;
+      text-align: center;
+      padding: 20px;
+    }
+    h2 { color: #d32f2f; margin-bottom: 10px; }
+    .box {
+      background: #16213e;
+      border: 1px solid rgba(211,47,47,0.3);
+      padding: 30px;
+      border-radius: 16px;
+      max-width: 400px;
+      width: 100%;
+    }
+    .pin-display {
+      font-size: 48px;
+      font-weight: bold;
+      color: #00e5ff;
+      margin: 20px 0;
+      letter-spacing: 8px;
+    }
+    .btn {
+      background: #d32f2f;
+      color: white;
+      border: none;
+      padding: 14px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+    }
+    .btn:hover { background: #b71c1c; }
+    .btn.green { background: #2e7d32; }
+    .btn.green:hover { background: #1b5e20; }
+    .status {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #a5d6a7;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>🔐 Shakti App - PIN Reset</h2>
+    <p>Your current saved PIN is:</p>
+    <div class="pin-display" id="currentPin">----</div>
+    <p style="color: #90a4ae; font-size: 13px;">If blank (----), it means no PIN was saved and the default is <strong style="color:#00e5ff">1234</strong></p>
+    <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+    <button class="btn" onclick="resetPin()">🔄 Reset PIN to 1234</button>
+    <button class="btn green" onclick="goToApp()">✅ Go to Shakti App</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <script>
+    // Show current stored PIN
+    const stored = localStorage.getItem('shakti_settings_pin');
+    document.getElementById('currentPin').textContent = stored || '----';
+
+    function resetPin() {
+      localStorage.setItem('shakti_settings_pin', '1234');
+      document.getElementById('currentPin').textContent = '1234';
+      document.getElementById('status').textContent = '✅ PIN successfully reset to 1234! Now click "Go to Shakti App".';
+      document.getElementById('status').style.color = '#a5d6a7';
+    }
+
+    function goToApp() {
+      window.location.href = 'http://localhost:3000';
+    }
+  </script>
+</body>
+</html>

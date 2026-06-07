@@ -541,6 +541,7 @@ body {
   justify-content: center;
   z-index: 30;
   animation: overlayFadeIn 0.2s ease-out;
+  pointer-events: none;
 }
 @keyframes overlayFadeIn {
   from { opacity: 0; transform: scale(0.9); }
@@ -1650,6 +1651,33 @@ body {
   color: #ff0000;
 }
 
+.whatsapp-send-btn {
+  background: #25d366; /* Official WhatsApp green */
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 14px 28px;
+  border-radius: 30px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4);
+  transition: var(--transition-elastic);
+  animation: pulseWhatsApp 1.5s infinite alternate;
+}
+.whatsapp-send-btn:active {
+  transform: scale(0.95);
+}
+.whatsapp-send-btn i {
+  font-size: 16px;
+}
+@keyframes pulseWhatsApp {
+  0% { transform: scale(1); box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4); }
+  100% { transform: scale(1.04); box-shadow: 0 10px 30px rgba(37, 211, 102, 0.7); }
+}
+
 .strobe-siren-overlay p {
   font-size: 10px;
   line-height: 1.4;
@@ -2080,3 +2108,93 @@ body {
   color: var(--text-primary);
   white-space: nowrap;
 }
+
+/* ==================== RADAR POINT INFO CARD ==================== */
+.radar-point-info-card {
+  background: linear-gradient(135deg, rgba(0,0,0,0.85), rgba(10,20,40,0.9));
+  border: 1px solid rgba(0,229,255,0.3);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 8px 0 6px 0;
+  animation: slideInUp 0.25s ease;
+}
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rpi-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.rpi-type-badge {
+  background: rgba(0,229,255,0.12);
+  border: 1px solid rgba(0,229,255,0.3);
+  color: #00e5ff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.rpi-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.3;
+}
+.rpi-metrics {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.rpi-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 6px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+.rpi-metric i {
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+.rpi-metric small {
+  font-size: 9px;
+  color: rgba(255,255,255,0.5);
+  font-weight: 400;
+}
+.rpi-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 8px;
+}
+.rpi-phone-lbl { font-size: 13px; }
+.rpi-phone {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  flex: 1;
+}
+.rpi-call-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #25d366;
+  color: #fff;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  transition: background 0.2s;
+}
+.rpi-call-btn:hover { background: #1ebe57; }
