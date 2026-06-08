@@ -32,7 +32,9 @@ const state = {
   userName: "Nisha Sharma",
   safetyPin: "1234",
   enteredPin: "",
-  batteryLevel: 85
+  batteryLevel: 85,
+  lastKnownLat: null,
+  lastKnownLng: null
 };
 
 // --- Daily Safety Tips Database ---
@@ -165,6 +167,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initBattery();
   initShakeSensor();
   
+  // Pre-fetch location to request permission early
+  prefetchLocation();
+  
   // Set random safety tip of the day
   setDailyTip();
 
@@ -178,6 +183,23 @@ document.addEventListener("DOMContentLoaded", () => {
       .catch(err => console.error('Service Worker Registration Failed!', err));
   }
 });
+
+// Pre-fetch location to ask for permission early and cache coordinates
+function prefetchLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        console.log("Pre-fetched location successfully:", pos.coords.latitude, pos.coords.longitude);
+        state.lastKnownLat = pos.coords.latitude;
+        state.lastKnownLng = pos.coords.longitude;
+      },
+      (err) => {
+        console.warn("Pre-fetch geolocation failed/ignored:", err);
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 } // cache up to 10 mins
+    );
+  }
+}
 
 // Update Simulated Device Clock
 function initDateTime() {
@@ -798,17 +820,65 @@ function sendLocationToSister() {
     buildWhatsAppPanel(mapsLink);
   };
 
+  // If we have a cached location from prefetch, use it immediately first
+  if (state.lastKnownLat && state.lastKnownLng) {
+    doSend(state.lastKnownLat, state.lastKnownLng);
+  }
+
+  // Request fresh location (high accuracy) to update the map link dynamically
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (pos) => doSend(pos.coords.latitude, pos.coords.longitude),
-      (err) => {
-        console.warn("Geolocation failed, using fallback.", err);
-        doSend(28.6139, 77.2090);
+      (pos) => {
+        state.lastKnownLat = pos.coords.latitude;
+        state.lastKnownLng = pos.coords.longitude;
+        doSend(pos.coords.latitude, pos.coords.longitude);
       },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      (err) => {
+        console.warn("Fresh high accuracy geolocation failed, trying low accuracy / cached / IP fallback.", err);
+        // Try low accuracy next
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            state.lastKnownLat = pos.coords.latitude;
+            state.lastKnownLng = pos.coords.longitude;
+            doSend(pos.coords.latitude, pos.coords.longitude);
+          },
+          (err2) => {
+            // Fall back to IP Geolocation if GPS fails
+            fetch('https://ipapi.co/json/')
+              .then(res => res.json())
+              .then(data => {
+                if (data.latitude && data.longitude) {
+                  doSend(data.latitude, data.longitude);
+                } else {
+                  throw new Error("No lat/lng in IP response");
+                }
+              })
+              .catch(ipErr => {
+                console.error("IP fallback failed, using hardcoded fallback.", ipErr);
+                if (!state.lastKnownLat) {
+                  doSend(28.6139, 77.2090); // Delhi fallback
+                }
+              });
+          },
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+        );
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
     );
   } else {
-    doSend(28.6139, 77.2090);
+    // Geolocation not supported, fall back to IP
+    fetch('https://ipapi.co/json/')
+      .then(res => res.json())
+      .then(data => {
+        if (data.latitude && data.longitude) {
+          doSend(data.latitude, data.longitude);
+        } else {
+          doSend(28.6139, 77.2090);
+        }
+      })
+      .catch(() => {
+        doSend(28.6139, 77.2090);
+      });
   }
 }
 

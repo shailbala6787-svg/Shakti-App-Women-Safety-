@@ -229,6 +229,13 @@ body {
   filter: drop-shadow(0 0 6px var(--neon-red-glow));
 }
 
+.header-logo-img {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
 .logo-text h1 {
   font-size: 16px;
   font-weight: 800;
