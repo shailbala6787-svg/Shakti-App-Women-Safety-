@@ -121,13 +121,7 @@ const defenseGuides = [
 ];
 
 // --- Simulated Map Markers (Safety Radar) ---
-const radarPoints = [
-  { x: 170, y: 140, type: 'user', name: 'You / आप' },
-  { x: 80, y: 70, type: 'police', name: 'Police Precinct No. 4', nameHi: 'पुलिस स्टेशन नं. ४', phone: '011-23010101' },
-  { x: 260, y: 90, type: 'police', name: 'Patrol Car #102', nameHi: 'पुलिस गश्ती वाहन #१०२', phone: '112' },
-  { x: 280, y: 200, type: 'safehouse', name: 'Metro Station Security Hub', nameHi: 'मेट्रो स्टेशन सुरक्षा हब', phone: '011-2569841' },
-  { x: 110, y: 220, type: 'safehouse', name: '24/7 Open Medical Center', nameHi: 'चौबीसों घंटे खुला अस्पताल', phone: '102' }
-];
+let radarPoints = [];
 
 // DTMF key frequencies
 const dtmfFreqs = {
@@ -353,7 +347,9 @@ function switchScreen(screenId) {
 
   // Screen Specific Actions
   if (screenId === 'screen-safemap') {
-    setTimeout(drawRadarMap, 100);
+    setTimeout(() => {
+      initializeRealMap();
+    }, 100);
   }
 }
 
@@ -742,13 +738,24 @@ function sendLocationToSister() {
   showToast("Detecting live location...", "लाइव लोकेशन पता की जा रही है...");
 
   if (navigator.geolocation) {
+    const geoSuccess = (pos) => openWhatsApp(phone, originalPhone, pos.coords.latitude, pos.coords.longitude, targetContact.name);
+    
+    // First try with high accuracy
     navigator.geolocation.getCurrentPosition(
-      (pos) => openWhatsApp(phone, originalPhone, pos.coords.latitude, pos.coords.longitude, targetContact.name),
+      geoSuccess,
       (err) => {
-        console.warn("Geolocation failed on system, using fallback.", err);
-        openWhatsApp(phone, originalPhone, 28.6139, 77.2090, targetContact.name);
+        console.warn("High accuracy failed, trying low accuracy...", err);
+        // Fallback to low accuracy
+        navigator.geolocation.getCurrentPosition(
+          geoSuccess,
+          (err2) => {
+            console.warn("Low accuracy failed too. Using fallback.", err2);
+            openWhatsApp(phone, originalPhone, 28.6139, 77.2090, targetContact.name);
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
   } else {
     openWhatsApp(phone, originalPhone, 28.6139, 77.2090, targetContact.name);
@@ -1147,8 +1154,9 @@ function terminateActiveCall() {
 }
 
 // ==================== SAFETY RADAR MAP SIMULATOR ====================
-let radarAngle = 0;
-let radarAnimationId = null;
+let leafletMap = null;
+let userMarker = null;
+let mapMarkers = [];
 
 function initRadarMap() {
   // Set up Filter Click Listeners
@@ -1183,7 +1191,6 @@ function initRadarMap() {
       state.mapWalkProgress = 0;
       walkBtn.classList.remove("active");
     }
-    drawRadarMap();
   });
 
   // Active walk simulator triggers walking dot
@@ -1200,6 +1207,104 @@ function initRadarMap() {
       walkBtn.classList.remove("active");
     }
   });
+}
+
+function initializeRealMap() {
+  if (leafletMap) return;
+  
+  const mapContainer = document.getElementById('safety-radar-map');
+  if (!mapContainer) return;
+  
+  leafletMap = L.map('safety-radar-map', {
+    zoomControl: false,
+    attributionControl: false
+  }).setView([28.6139, 77.2090], 14);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19
+  }).addTo(leafletMap);
+
+  showToast("Locating you...", "आपकी लोकेशन खोजी जा रही है...");
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      setupMapForLocation(lat, lng);
+    }, (err) => {
+      console.warn("Geolocation failed on map init, using fallback.", err);
+      navigator.geolocation.getCurrentPosition((pos2) => {
+          setupMapForLocation(pos2.coords.latitude, pos2.coords.longitude);
+      }, (err2) => {
+          setupMapForLocation(28.6139, 77.2090);
+      }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
+    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+  } else {
+    setupMapForLocation(28.6139, 77.2090);
+  }
+}
+
+function setupMapForLocation(lat, lng) {
+  if (!leafletMap) return;
+  leafletMap.setView([lat, lng], 14);
+
+  const userIcon = L.divIcon({
+    className: 'custom-leaflet-marker',
+    html: '<div style="background:#00e5ff; width:14px; height:14px; border-radius:50%; box-shadow: 0 0 12px #00e5ff; border: 2px solid #fff;"></div>',
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
+  });
+  
+  if (userMarker) leafletMap.removeLayer(userMarker);
+  userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(leafletMap);
+  userMarker.bindPopup(state.currentLanguage === 'en' ? "You / आप" : "आप");
+
+  fetchSafetyPointsFromOverpass(lat, lng);
+}
+
+function fetchSafetyPointsFromOverpass(lat, lng) {
+  const query = `
+    [out:json];
+    (
+      node["amenity"="police"](around:5000, ${lat}, ${lng});
+      node["amenity"="hospital"](around:5000, ${lat}, ${lng});
+    );
+    out body 20;
+  `;
+  
+  const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      radarPoints = [];
+      if (data.elements && data.elements.length > 0) {
+        data.elements.forEach(el => {
+          let type = (el.tags.amenity === 'police') ? 'police' : 'safehouse';
+          let nameEn = el.tags.name || (type === 'police' ? "Police Station" : "Medical Center");
+          let nameHi = (type === 'police' ? "पुलिस स्टेशन" : "अस्पताल");
+          
+          radarPoints.push({
+            lat: el.lat,
+            lng: el.lon,
+            type: type,
+            name: nameEn,
+            nameHi: nameHi
+          });
+        });
+      }
+      drawRadarMap();
+    })
+    .catch(err => {
+      console.warn("Overpass API failed, using fallback simulated points.", err);
+      radarPoints = [
+        { lat: lat + 0.01, lng: lng + 0.01, type: 'police', name: 'Police Precinct No. 4', nameHi: 'पुलिस स्टेशन नं. ४' },
+        { lat: lat - 0.01, lng: lng + 0.015, type: 'police', name: 'Patrol Car #102', nameHi: 'पुलिस गश्ती वाहन #१०२' },
+        { lat: lat + 0.015, lng: lng - 0.01, type: 'safehouse', name: 'Metro Station Security Hub', nameHi: 'मेट्रो स्टेशन सुरक्षा हब' },
+        { lat: lat - 0.01, lng: lng - 0.01, type: 'safehouse', name: '24/7 Open Medical Center', nameHi: 'चौबीसों घंटे खुला अस्पताल' }
+      ];
+      drawRadarMap();
+    });
 }
 
 function simulateWalkMovement() {
@@ -1245,135 +1350,30 @@ function setRadarFilter(filter, event) {
 }
 
 function drawRadarMap() {
-  const canvas = document.getElementById("safety-radar-canvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
+  if (!leafletMap) return;
   
-  const cx = canvas.width / 2;
-  const cy = canvas.height / 2;
+  mapMarkers.forEach(m => leafletMap.removeLayer(m));
+  mapMarkers = [];
   
-  if (radarAnimationId) {
-    cancelAnimationFrame(radarAnimationId);
-  }
-
-  const renderLoop = () => {
-    // Clear Canvas
-    ctx.fillStyle = '#06080e';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw radar circles grid
-    ctx.strokeStyle = 'rgba(0, 229, 255, 0.08)';
-    ctx.lineWidth = 1;
-    for (let r = 40; r < 180; r += 40) {
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.stroke();
+  radarPoints.forEach(p => {
+    if (state.mapFilter !== 'all' && p.type !== state.mapFilter) {
+      return;
     }
     
-    // Draw crosshair axes
-    ctx.beginPath();
-    ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy);
-    ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height);
-    ctx.stroke();
+    let label = state.currentLanguage === 'en' ? p.name : (p.nameHi || p.name);
+    let color = (p.type === 'police') ? '#2979ff' : '#39ff14';
     
-    // Draw rotating sweep line
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(radarAngle);
-    
-    let sweepGrad = ctx.createLinearGradient(0, 0, 160, 0);
-    sweepGrad.addColorStop(0, 'rgba(0, 229, 255, 0.4)');
-    sweepGrad.addColorStop(1, 'rgba(0, 229, 255, 0)');
-    ctx.strokeStyle = sweepGrad;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(150, 0);
-    ctx.stroke();
-    ctx.restore();
-    
-    radarAngle += 0.015;
-    if (radarAngle > Math.PI * 2) radarAngle = 0;
-    
-    // Render nearest route path overlay if route computed
-    let pathStart = { x: 170, y: 140 }; // Start User Node
-    let pathEnd = { x: 280, y: 200 }; // End Safehouse Hub
-    
-    if (state.mapRouteActive) {
-      ctx.strokeStyle = '#39ff14';
-      ctx.lineWidth = 3;
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = '#39ff14';
-      ctx.beginPath();
-      ctx.moveTo(pathStart.x, pathStart.y);
-      ctx.bezierCurveTo(200, 120, 240, 170, pathEnd.x, pathEnd.y);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-    
-    // Draw Markers
-    radarPoints.forEach(p => {
-      if (state.mapFilter !== 'all' && p.type !== 'user' && p.type !== state.mapFilter) {
-        return;
-      }
-      
-      let markerX = p.x;
-      let markerY = p.y;
-      
-      let label = state.currentLanguage === 'en' ? p.name : (p.nameHi || p.name);
-      
-      if (p.type === 'user') {
-        // If walking simulation active, animate dot along path bezier
-        if (state.mapRouteActive && state.mapWalkActive) {
-          const t = state.mapWalkProgress;
-          // Interpolate bezier coordinates
-          // P = (1-t)^3*P0 + 3(1-t)^2*t*P1 + 3(1-t)*t^2*P2 + t^3*P3
-          // For simplicity, linear curve interpolation between 170,140 -> 200,120 -> 240,170 -> 280,200
-          const x1 = 170, y1 = 140;
-          const x2 = 200, y2 = 120;
-          const x3 = 240, y3 = 170;
-          const x4 = 280, y4 = 200;
-          
-          markerX = Math.pow(1-t, 3)*x1 + 3*Math.pow(1-t, 2)*t*x2 + 3*(1-t)*Math.pow(t, 2)*x3 + Math.pow(t, 3)*x4;
-          markerY = Math.pow(1-t, 3)*y1 + 3*Math.pow(1-t, 2)*t*y2 + 3*(1-t)*Math.pow(t, 2)*y3 + Math.pow(t, 3)*y4;
-        }
-        
-        ctx.beginPath();
-        ctx.arc(markerX, markerY, 6, 0, Math.PI * 2);
-        ctx.fillStyle = '#00e5ff';
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#00e5ff';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        
-        ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
-        ctx.beginPath();
-        ctx.arc(markerX, markerY, 10 + Math.sin(Date.now() * 0.005) * 4, 0, Math.PI * 2);
-        ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.arc(markerX, markerY, 6, 0, Math.PI * 2);
-        
-        if (p.type === 'police') {
-          ctx.fillStyle = '#2979ff';
-          ctx.fill();
-          ctx.fillStyle = '#fff';
-          ctx.font = '7px Outfit';
-          ctx.fillText(label, markerX - 20, markerY - 10);
-        } else if (p.type === 'safehouse') {
-          ctx.fillStyle = '#39ff14';
-          ctx.fill();
-          ctx.fillStyle = '#fff';
-          ctx.font = '7px Outfit';
-          ctx.fillText(label, markerX - 25, markerY - 10);
-        }
-      }
+    const icon = L.divIcon({
+      className: 'custom-leaflet-marker',
+      html: \`<div style="background:\${color}; width:10px; height:10px; border-radius:50%; box-shadow: 0 0 8px \${color};"></div>
+             <div style="color:#fff; font-size:10px; margin-top:2px; white-space:nowrap; text-shadow:1px 1px 2px #000;">\${label}</div>\`,
+      iconSize: [10, 10],
+      iconAnchor: [5, 5]
     });
-
-    radarAnimationId = requestAnimationFrame(renderLoop);
-  };
-  
-  renderLoop();
+    
+    let marker = L.marker([p.lat, p.lng], { icon: icon }).addTo(leafletMap);
+    mapMarkers.push(marker);
+  });
 }
 
 // ==================== AUDIO WITNESS EVIDENCE COLLECTION ====================
