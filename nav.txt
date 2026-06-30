@@ -1,0 +1,22 @@
+<footer class="app-footer-nav">
+        <button class="nav-item active" data-screen="screen-home" aria-label="Dashboard">
+          <i class="fa-solid fa-house-chimney"></i>
+          <span class="nav-label-en">Home</span>
+          <span class="nav-label-hi hide">मुख्य</span>
+        </button>
+        <button class="nav-item" data-screen="screen-contacts" aria-label="Guardians">
+          <i class="fa-solid fa-user-shield"></i>
+          <span class="nav-label-en">Guardians</span>
+          <span class="nav-label-hi hide">अभिभावक</span>
+        </button>
+        <button class="nav-item" data-screen="screen-helplines" aria-label="Helplines">
+          <i class="fa-solid fa-phone-flip"></i>
+          <span class="nav-label-en">Helplines</span>
+          <span class="nav-label-hi hide">हेल्पलाइन</span>
+        </button>
+        <button class="nav-item" data-screen="screen-defense" aria-label="Guides">
+          <i class="fa-solid fa-book-open-reader"></i>
+          <span class="nav-label-en">Academy</span>
+          <span class="nav-label-hi hide">एकेडमी</span>
+        </button>
+      </footer>

@@ -1,0 +1,6 @@
+154:   initRadarMap();
+285:     switchScreen("screen-home");
+349: function switchScreen(screenId) {
+371:   if (screenId === 'screen-safemap') {
+383:       switchScreen(screenId);
+1341: function initRadarMap() {

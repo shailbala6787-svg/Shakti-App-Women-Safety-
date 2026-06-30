@@ -371,7 +371,11 @@ function switchScreen(screenId) {
   if (screenId === 'screen-safemap') {
     setTimeout(() => {
       initializeRealMap();
-    }, 100);
+      // Force Leaflet to recalculate size after screen transition
+      if (leafletMap) {
+        leafletMap.invalidateSize(true);
+      }
+    }, 300);
   }
 }
 
@@ -841,7 +845,6 @@ function sendLocationToSister() {
         );
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-b
     );
   } else {
     // Geolocation not supported, fall back to IP
@@ -1392,37 +1395,44 @@ function initRadarMap() {
 }
 
 function initializeRealMap() {
-  if (leafletMap) return;
-  
   const mapContainer = document.getElementById('safety-radar-map');
   if (!mapContainer) return;
-  
-  leafletMap = L.map('safety-radar-map', {
-    zoomControl: false,
-    attributionControl: false
-  }).setView([28.6139, 77.2090], 14);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19
+  // If already initialized, just refresh markers and size
+  if (leafletMap) {
+    leafletMap.invalidateSize(true);
+    if (radarPoints.length > 0) drawRadarMap();
+    return;
+  }
+
+  leafletMap = L.map('safety-radar-map', {
+    zoomControl: true,
+    attributionControl: true
+  }).setView([26.8467, 80.9462], 13); // Lucknow, UP default
+
+  // Light tile layer — clearly shows roads and labels
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
   }).addTo(leafletMap);
+
+  // Force size recalculation (needed inside mobile wrapper)
+  setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(true); }, 150);
+  setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(true); }, 500);
 
   showToast("Locating you...", "आपकी लोकेशन खोजी जा रही है...");
 
   if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      setupMapForLocation(lat, lng);
-    }, (err) => {
-      console.warn("Geolocation failed on map init, using fallback.", err);
-      navigator.geolocation.getCurrentPosition((pos2) => {
-          setupMapForLocation(pos2.coords.latitude, pos2.coords.longitude);
-      }, (err2) => {
-          setupMapForLocation(28.6139, 77.2090);
-      }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
-    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setupMapForLocation(pos.coords.latitude, pos.coords.longitude),
+      (err) => {
+        console.warn("Geolocation denied, using Lucknow fallback.", err);
+        setupMapForLocation(26.8467, 80.9462);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   } else {
-    setupMapForLocation(28.6139, 77.2090);
+    setupMapForLocation(26.8467, 80.9462);
   }
 }
 
@@ -1430,65 +1440,102 @@ function setupMapForLocation(lat, lng) {
   if (!leafletMap) return;
   state.lastKnownLat = lat;
   state.lastKnownLng = lng;
-  leafletMap.setView([lat, lng], 14);
+  leafletMap.setView([lat, lng], 13);
 
-  const userIcon = L.divIcon({
-    className: 'custom-leaflet-marker',
-    html: '<div style="background:#00e5ff; width:14px; height:14px; border-radius:50%; box-shadow: 0 0 12px #00e5ff; border: 2px solid #fff;"></div>',
-    iconSize: [14, 14],
-    iconAnchor: [7, 7]
-  });
-  
   if (userMarker) leafletMap.removeLayer(userMarker);
-  userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(leafletMap);
-  userMarker.bindPopup(state.currentLanguage === 'en' ? "You / आप" : "आप");
+  // Use circleMarker for the user position — always visible
+  userMarker = L.circleMarker([lat, lng], {
+    radius: 9,
+    color: '#00ACC1',
+    weight: 3,
+    fillColor: '#00E5FF',
+    fillOpacity: 1
+  }).addTo(leafletMap);
+  userMarker.bindPopup('<b>📍 You are here</b><br>आप यहाँ हैं');
 
   fetchSafetyPointsFromOverpass(lat, lng);
 }
 
 function fetchSafetyPointsFromOverpass(lat, lng) {
   const query = `
-    [out:json];
+    [out:json][timeout:25];
     (
       node["amenity"="police"](around:5000, ${lat}, ${lng});
-      node["amenity"="hospital"](around:5000, ${lat}, ${lng});
+      way["amenity"="police"](around:5000, ${lat}, ${lng});
+      node["amenity"="hospital"](around:3000, ${lat}, ${lng});
+      node["amenity"="clinic"](around:3000, ${lat}, ${lng});
+      node["amenity"="fire_station"](around:3000, ${lat}, ${lng});
     );
-    out body 20;
+    out center 30;
   `;
   
   const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
 
   fetch(url)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('Overpass HTTP error: ' + res.status);
+      return res.json();
+    })
     .then(data => {
       radarPoints = [];
       if (data.elements && data.elements.length > 0) {
         data.elements.forEach(el => {
-          let type = (el.tags.amenity === 'police') ? 'police' : 'safehouse';
-          let nameEn = el.tags.name || (type === 'police' ? "Police Station" : "Medical Center");
-          let nameHi = (type === 'police' ? "पुलिस स्टेशन" : "अस्पताल");
+          const amenity = el.tags && el.tags.amenity;
+          if (!amenity) return;
+          // For ways (polygons), use center coords
+          const elLat = el.lat || (el.center && el.center.lat);
+          const elLng = el.lon || (el.center && el.center.lon);
+          if (!elLat || !elLng) return;
+
+          let type = (amenity === 'police') ? 'police' : 'safehouse';
+          let nameEn = (el.tags && el.tags.name) || (type === 'police' ? 'Police Station' : 
+                        amenity === 'hospital' ? 'Hospital' :
+                        amenity === 'clinic' ? 'Health Clinic' :
+                        amenity === 'fire_station' ? 'Fire & Rescue Station' : 'Safe Center');
+          let nameHi = type === 'police' ? 'पुलिस स्टेशन' :
+                        amenity === 'hospital' ? 'अस्पताल' :
+                        amenity === 'clinic' ? 'स्वास्थ्य क्लिनिक' :
+                        amenity === 'fire_station' ? 'अग्निशमन केंद्र' : 'सुरक्षित केंद्र';
           
           radarPoints.push({
-            lat: el.lat,
-            lng: el.lon,
-            type: type,
-            name: nameEn,
-            nameHi: nameHi
+            lat: elLat, lng: elLng, type, name: nameEn, nameHi,
+            phone: (el.tags && (el.tags.phone || el.tags['contact:phone'])) || ''
           });
         });
       }
-      drawRadarMap();
+
+      // If no police found, add simulated ones
+      const hasPolice = radarPoints.some(p => p.type === 'police');
+      if (!hasPolice) {
+        radarPoints.push(
+          { lat: lat + 0.009, lng: lng + 0.011, type: 'police', name: 'Police Station', nameHi: 'पुलिस स्टेशन', phone: '100' },
+          { lat: lat - 0.007, lng: lng + 0.013, type: 'police', name: 'Police Patrol Post', nameHi: 'पुलिस गश्ती चौकी', phone: '112' }
+        );
+      }
+
+      // If nothing at all, use full fallback
+      if (radarPoints.length === 0) {
+        useFallbackPoints(lat, lng);
+      } else {
+        drawRadarMap();
+      }
     })
     .catch(err => {
       console.warn("Overpass API failed, using fallback simulated points.", err);
-      radarPoints = [
-        { lat: lat + 0.01, lng: lng + 0.01, type: 'police', name: 'Police Precinct No. 4', nameHi: 'पुलिस स्टेशन नं. ४' },
-        { lat: lat - 0.01, lng: lng + 0.015, type: 'police', name: 'Patrol Car #102', nameHi: 'पुलिस गश्ती वाहन #१०२' },
-        { lat: lat + 0.015, lng: lng - 0.01, type: 'safehouse', name: 'Metro Station Security Hub', nameHi: 'मेट्रो स्टेशन सुरक्षा हब' },
-        { lat: lat - 0.01, lng: lng - 0.01, type: 'safehouse', name: '24/7 Open Medical Center', nameHi: 'चौबीसों घंटे खुला अस्पताल' }
-      ];
-      drawRadarMap();
+      useFallbackPoints(lat, lng);
     });
+}
+
+function useFallbackPoints(lat, lng) {
+  radarPoints = [
+    { lat: lat + 0.010, lng: lng + 0.010, type: 'police', name: 'Police Station No. 4', nameHi: 'पुलिस स्टेशन नं. ४', phone: '100' },
+    { lat: lat - 0.008, lng: lng + 0.012, type: 'police', name: 'Police Patrol Post', nameHi: 'पुलिस गश्ती चौकी', phone: '112' },
+    { lat: lat + 0.012, lng: lng - 0.008, type: 'safehouse', name: 'District Hospital', nameHi: 'जिला अस्पताल', phone: '108' },
+    { lat: lat - 0.009, lng: lng - 0.011, type: 'safehouse', name: '24/7 Medical Center', nameHi: 'चौबीसों घंटे अस्पताल', phone: '102' },
+    { lat: lat + 0.006, lng: lng + 0.016, type: 'safehouse', name: 'Fire & Rescue Station', nameHi: 'अग्निशमन केंद्र', phone: '101' },
+    { lat: lat - 0.014, lng: lng + 0.005, type: 'safehouse', name: 'Community Safe Center', nameHi: 'सामुदायिक सुरक्षा केंद्र', phone: '1090' }
+  ];
+  drawRadarMap();
 }
 
 function simulateWalkMovement() {
@@ -1586,33 +1633,57 @@ function setRadarFilter(filter, event) {
 
 function drawRadarMap() {
   if (!leafletMap) return;
-  
+
+  // Remove old markers
   mapMarkers.forEach(m => leafletMap.removeLayer(m));
   mapMarkers = [];
-  
+
   radarPoints.forEach(p => {
     if (state.mapFilter !== 'all' && p.type !== 'user' && p.type !== state.mapFilter) {
       return;
     }
-    
-    let label = state.currentLanguage === 'en' ? p.name : (p.nameHi || p.name);
-    let color = (p.type === 'police') ? '#2979ff' : '#39ff14';
-    
-    const icon = L.divIcon({
-      className: 'custom-leaflet-marker',
-      html: `<div style="background:${color}; width:10px; height:10px; border-radius:50%; box-shadow: 0 0 8px ${color};"></div>
-             <div style="color:#fff; font-size:10px; margin-top:2px; white-space:nowrap; text-shadow:1px 1px 2px #000;">${label}</div>`,
-      iconSize: [10, 10],
-      iconAnchor: [5, 5]
-    });
-    
-    let marker = L.marker([p.lat, p.lng], { icon: icon }).addTo(leafletMap);
+
+    const isPolice = p.type === 'police';
+    const color   = isPolice ? '#1565C0' : '#2E7D32';
+    const fillC   = isPolice ? '#42A5F5' : '#66BB6A';
+    const label   = state.currentLanguage === 'en' ? p.name : (p.nameHi || p.name);
+    const emoji   = isPolice ? '🚔' : '🏥';
+    const phone   = p.phone ? `<br><b>📞 ${p.phone}</b>` : '';
+
+    // Use circleMarker — always visible on any tile style
+    const marker = L.circleMarker([p.lat, p.lng], {
+      radius: 10,
+      color: color,
+      weight: 2,
+      fillColor: fillC,
+      fillOpacity: 0.9
+    }).addTo(leafletMap);
+
+    // Popup with rich info
+    marker.bindPopup(`
+      <div style="min-width:160px;font-family:sans-serif;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">${emoji} ${label}</div>
+        <div style="font-size:11px;color:#555;">${isPolice ? 'Police Station' : 'Safe Zone'}${phone}</div>
+        ${p.phone ? `<a href="tel:${p.phone}" style="display:inline-block;margin-top:6px;padding:4px 10px;background:#d32f2f;color:#fff;border-radius:4px;text-decoration:none;font-size:11px;font-weight:700;">📞 Call Now</a>` : ''}
+      </div>
+    `, { maxWidth: 220 });
+
     marker.on('click', () => {
       selectedRadarPoint = p;
       showRadarPointInfo(p);
     });
+
     mapMarkers.push(marker);
   });
+
+  // Fit map bounds to show all markers + user location
+  if (mapMarkers.length > 0 && state.lastKnownLat) {
+    const allLatlngs = mapMarkers.map(m => m.getLatLng());
+    allLatlngs.push(L.latLng(state.lastKnownLat, state.lastKnownLng));
+    try {
+      leafletMap.fitBounds(L.latLngBounds(allLatlngs), { padding: [30, 30], maxZoom: 15 });
+    } catch(e) {}
+  }
 }
 
 // ==================== AUDIO WITNESS EVIDENCE COLLECTION ====================

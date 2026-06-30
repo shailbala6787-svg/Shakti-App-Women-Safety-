@@ -1,0 +1,32 @@
+function drawRadarMap() {
+  if (!leafletMap) return;
+  
+  mapMarkers.forEach(m => leafletMap.removeLayer(m));
+  mapMarkers = [];
+  
+  radarPoints.forEach(p => {
+    if (state.mapFilter !== 'all' && p.type !== 'user' && p.type !== state.mapFilter) {
+      return;
+    }
+    
+    let label = state.currentLanguage === 'en' ? p.name : (p.nameHi || p.name);
+    let color = (p.type === 'police') ? '#2979ff' : '#39ff14';
+    
+    const icon = L.divIcon({
+      className: 'custom-leaflet-marker',
+      html: `<div style="background:${color}; width:10px; height:10px; border-radius:50%; box-shadow: 0 0 8px ${color};"></div>
+             <div style="color:#fff; font-size:10px; margin-top:2px; white-space:nowrap; text-shadow:1px 1px 2px #000;">${label}</div>`,
+      iconSize: [10, 10],
+      iconAnchor: [5, 5]
+    });
+    
+    let marker = L.marker([p.lat, p.lng], { icon: icon }).addTo(leafletMap);
+    marker.on('click', () => {
+      selectedRadarPoint = p;
+      showRadarPointInfo(p);
+    });
+    mapMarkers.push(marker);
+  });
+}
+
+// ==================== AUDIO WITNESS EVIDENCE COLLECTION ====================
