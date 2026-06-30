@@ -1591,154 +1591,23 @@ function drawRadarMap() {
   mapMarkers = [];
   
   radarPoints.forEach(p => {
-    if (state.mapFilter !== 'all' && p.type !== state.mapFilter) {
+    if (state.mapFilter !== 'all' && p.type !== 'user' && p.type !== state.mapFilter) {
       return;
     }
     
     let label = state.currentLanguage === 'en' ? p.name : (p.nameHi || p.name);
     let color = (p.type === 'police') ? '#2979ff' : '#39ff14';
     
-<<<<<<< HEAD
     const icon = L.divIcon({
       className: 'custom-leaflet-marker',
-      html: \`<div style="background:\${color}; width:10px; height:10px; border-radius:50%; box-shadow: 0 0 8px \${color};"></div>
-             <div style="color:#fff; font-size:10px; margin-top:2px; white-space:nowrap; text-shadow:1px 1px 2px #000;">\${label}</div>\`,
+      html: `<div style="background:${color}; width:10px; height:10px; border-radius:50%; box-shadow: 0 0 8px ${color};"></div>
+             <div style="color:#fff; font-size:10px; margin-top:2px; white-space:nowrap; text-shadow:1px 1px 2px #000;">${label}</div>`,
       iconSize: [10, 10],
       iconAnchor: [5, 5]
-=======
-    // Draw rotating sweep line
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(radarAngle);
-    
-    let sweepGrad = ctx.createLinearGradient(0, 0, 160, 0);
-    sweepGrad.addColorStop(0, 'rgba(0, 229, 255, 0.4)');
-    sweepGrad.addColorStop(1, 'rgba(0, 229, 255, 0)');
-    ctx.strokeStyle = sweepGrad;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(150, 0);
-    ctx.stroke();
-    ctx.restore();
-    
-    radarAngle += 0.015;
-    if (radarAngle > Math.PI * 2) radarAngle = 0;
-    
-    // Render nearest route path overlay if route computed
-    let pathStart = { x: 170, y: 140 }; // Start User Node
-    let pathEnd = { x: 280, y: 200 }; // End Safehouse Hub
-    
-    if (state.mapRouteActive) {
-      ctx.strokeStyle = '#39ff14';
-      ctx.lineWidth = 3;
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = '#39ff14';
-      ctx.beginPath();
-      ctx.moveTo(pathStart.x, pathStart.y);
-      ctx.bezierCurveTo(200, 120, 240, 170, pathEnd.x, pathEnd.y);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-    
-    // Draw Markers
-    radarPoints.forEach(p => {
-      if (state.mapFilter !== 'all' && p.type !== 'user' && p.type !== state.mapFilter) {
-        return;
-      }
-      
-      let markerX = p.x;
-      let markerY = p.y;
-      
-      let label = state.currentLanguage === 'en' ? p.name : (p.nameHi || p.name);
-      
-      if (p.type === 'user') {
-        // If walking simulation active, animate dot along path bezier
-        if (state.mapRouteActive && state.mapWalkActive) {
-          const t = state.mapWalkProgress;
-          // Interpolate bezier coordinates
-          // P = (1-t)^3*P0 + 3(1-t)^2*t*P1 + 3(1-t)*t^2*P2 + t^3*P3
-          // For simplicity, linear curve interpolation between 170,140 -> 200,120 -> 240,170 -> 280,200
-          const x1 = 170, y1 = 140;
-          const x2 = 200, y2 = 120;
-          const x3 = 240, y3 = 170;
-          const x4 = 280, y4 = 200;
-          
-          markerX = Math.pow(1-t, 3)*x1 + 3*Math.pow(1-t, 2)*t*x2 + 3*(1-t)*Math.pow(t, 2)*x3 + Math.pow(t, 3)*x4;
-          markerY = Math.pow(1-t, 3)*y1 + 3*Math.pow(1-t, 2)*t*y2 + 3*(1-t)*Math.pow(t, 2)*y3 + Math.pow(t, 3)*y4;
-        }
-        
-        ctx.beginPath();
-        ctx.arc(markerX, markerY, 6, 0, Math.PI * 2);
-        ctx.fillStyle = '#00e5ff';
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#00e5ff';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        
-        ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
-        ctx.beginPath();
-        ctx.arc(markerX, markerY, 10 + Math.sin(Date.now() * 0.005) * 4, 0, Math.PI * 2);
-        ctx.stroke();
-      } else {
-        // Choose color by type
-        const dotColor = p.type === 'police' ? '#2979ff' : '#39ff14';
-        const bgColor  = p.type === 'police' ? 'rgba(41,121,255,0.75)' : 'rgba(57,255,20,0.75)';
-        const icon     = p.type === 'police' ? '🚔' : '🏥';
-
-        // Draw glowing dot
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = dotColor;
-        ctx.beginPath();
-        ctx.arc(markerX, markerY, 6, 0, Math.PI * 2);
-        ctx.fillStyle = dotColor;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // Pulse ring
-        ctx.strokeStyle = dotColor + '55';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(markerX, markerY, 10 + Math.sin(Date.now() * 0.004 + markerX) * 3, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Selection highlight ring (if this point is selected)
-        if (selectedRadarPoint && selectedRadarPoint.name === p.name) {
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2.5;
-          ctx.setLineDash([4, 3]);
-          ctx.beginPath();
-          ctx.arc(markerX, markerY, 16, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-
-        // Name label with background pill
-        const shortLabel = label.length > 18 ? label.slice(0, 16) + '…' : label;
-        ctx.font = 'bold 9px Outfit, sans-serif';
-        const tw = ctx.measureText(shortLabel).width;
-        const lx = markerX - tw / 2 - 4;
-        const ly = markerY - 22;
-        const lw = tw + 8;
-        const lh = 14;
-
-        // Pill background
-        ctx.fillStyle = bgColor;
-        ctx.beginPath();
-        ctx.roundRect(lx, ly, lw, lh, 4);
-        ctx.fill();
-
-        // Label text
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.fillText(shortLabel, markerX, ly + 10);
-        ctx.textAlign = 'left';
-      }
->>>>>>> 30295c86b0e8b7885b67691cd1ad6438908c7b0b
     });
     
     let marker = L.marker([p.lat, p.lng], { icon: icon }).addTo(leafletMap);
-    marker.on("click", () => {
+    marker.on('click', () => {
       selectedRadarPoint = p;
       showRadarPointInfo(p);
     });
