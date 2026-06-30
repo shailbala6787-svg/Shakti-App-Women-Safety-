@@ -32,7 +32,9 @@ const state = {
   userName: "Nisha Sharma",
   safetyPin: "1234",
   enteredPin: "",
-  batteryLevel: 85
+  batteryLevel: 85,
+  lastKnownLat: null,
+  lastKnownLng: null
 };
 
 // --- Daily Safety Tips Database ---
@@ -159,6 +161,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initBattery();
   initShakeSensor();
   
+  // Pre-fetch location to request permission early
+  prefetchLocation();
+  
   // Set random safety tip of the day
   setDailyTip();
 
@@ -172,6 +177,23 @@ document.addEventListener("DOMContentLoaded", () => {
       .catch(err => console.error('Service Worker Registration Failed!', err));
   }
 });
+
+// Pre-fetch location to ask for permission early and cache coordinates
+function prefetchLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        console.log("Pre-fetched location successfully:", pos.coords.latitude, pos.coords.longitude);
+        state.lastKnownLat = pos.coords.latitude;
+        state.lastKnownLng = pos.coords.longitude;
+      },
+      (err) => {
+        console.warn("Pre-fetch geolocation failed/ignored:", err);
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 } // cache up to 10 mins
+    );
+  }
+}
 
 // Update Simulated Device Clock
 function initDateTime() {
@@ -227,7 +249,7 @@ function initSettings() {
   const savedName = localStorage.getItem("shakti_settings_name");
   
   // Robust check: Ensure stored pin is valid, else fallback and force reset to default "1234"
-  if (savedPin && savedPin.length === 4 && !isNaN(savedPin)) {
+  if (savedPin && savedPin.length === 4 && !isNaN(savedPin) && Number.isInteger(Number(savedPin)) && Number(savedPin) >= 0) {
     state.safetyPin = savedPin;
   } else {
     state.safetyPin = "1234";
@@ -248,7 +270,7 @@ function initSettings() {
     const pinVal = document.getElementById("settings-pin").value.trim();
     const nameVal = document.getElementById("settings-user-name").value.trim();
     
-    if (pinVal.length !== 4 || isNaN(pinVal)) {
+    if (pinVal.length !== 4 || isNaN(pinVal) || !Number.isInteger(Number(pinVal)) || Number(pinVal) < 0) {
       showToast("PIN must be exactly 4 digits!", "पिन ठीक ४ अंकों का होना चाहिए!");
       return;
     }
@@ -463,45 +485,56 @@ function startAudioContext() {
 }
 
 function startSirenAlarm() {
-  startAudioContext();
-  
-  if (state.sirenActive) return;
+  try {
+    startAudioContext();
+    
+    if (state.sirenActive) return;
 
-  const ctx = state.audioContext;
-  sirenGain = ctx.createGain();
-  sirenGain.gain.setValueAtTime(0, ctx.currentTime);
-  sirenGain.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 0.1);
-  sirenGain.connect(ctx.destination);
+    const ctx = state.audioContext;
+    if (!ctx) return;
+    sirenGain = ctx.createGain();
+    sirenGain.gain.setValueAtTime(0, ctx.currentTime);
+    sirenGain.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 0.1);
+    sirenGain.connect(ctx.destination);
 
-  // Twin oscillators for oscillating warning sound
-  sirenOsc1 = ctx.createOscillator();
-  sirenOsc1.type = 'sawtooth';
-  sirenOsc1.frequency.setValueAtTime(400, ctx.currentTime);
-  sirenOsc1.connect(sirenGain);
-  sirenOsc1.start();
+    // Twin oscillators for oscillating warning sound
+    sirenOsc1 = ctx.createOscillator();
+    sirenOsc1.type = 'sawtooth';
+    sirenOsc1.frequency.setValueAtTime(400, ctx.currentTime);
+    sirenOsc1.connect(sirenGain);
+    sirenOsc1.start();
 
-  sirenOsc2 = ctx.createOscillator();
-  sirenOsc2.type = 'sine';
-  sirenOsc2.frequency.setValueAtTime(600, ctx.currentTime);
-  sirenOsc2.connect(sirenGain);
-  sirenOsc2.start();
+    sirenOsc2 = ctx.createOscillator();
+    sirenOsc2.type = 'sine';
+    sirenOsc2.frequency.setValueAtTime(600, ctx.currentTime);
+    sirenOsc2.connect(sirenGain);
+    sirenOsc2.start();
 
-  // Modulate siren frequencies up and down
-  let highFrequency = true;
-  sirenInterval = setInterval(() => {
-    const time = ctx.currentTime;
-    if (highFrequency) {
-      sirenOsc1.frequency.exponentialRampToValueAtTime(1000, time + 0.35);
-      sirenOsc2.frequency.exponentialRampToValueAtTime(800, time + 0.35);
-    } else {
-      sirenOsc1.frequency.exponentialRampToValueAtTime(400, time + 0.35);
-      sirenOsc2.frequency.exponentialRampToValueAtTime(500, time + 0.35);
-    }
-    highFrequency = !highFrequency;
-  }, 400);
+    // Modulate siren frequencies up and down
+    let highFrequency = true;
+    sirenInterval = setInterval(() => {
+      try {
+        const time = ctx.currentTime;
+        if (highFrequency) {
+          sirenOsc1.frequency.exponentialRampToValueAtTime(1000, time + 0.35);
+          sirenOsc2.frequency.exponentialRampToValueAtTime(800, time + 0.35);
+        } else {
+          sirenOsc1.frequency.exponentialRampToValueAtTime(400, time + 0.35);
+          sirenOsc2.frequency.exponentialRampToValueAtTime(500, time + 0.35);
+        }
+        highFrequency = !highFrequency;
+      } catch (err) {
+        console.warn("Error modulating siren:", err);
+      }
+    }, 400);
 
-  state.sirenActive = true;
-  updateSirenUI();
+    state.sirenActive = true;
+    updateSirenUI();
+  } catch (err) {
+    console.error("Failed to start siren alarm:", err);
+    state.sirenActive = true;
+    updateSirenUI();
+  }
 }
 
 function stopSirenAlarm() {
@@ -573,14 +606,23 @@ function initSOSButton() {
     countdownOverlay.classList.remove("hide");
     countdownNumber.textContent = "3";
     
+    const helperEn = countdownOverlay.querySelector('.countdown-helper-en');
+    const helperHi = countdownOverlay.querySelector('.countdown-helper-hi');
+    if (helperEn) helperEn.textContent = "Release to Cancel";
+    if (helperHi) helperHi.textContent = "रद्द करने के लिए छोड़ें";
+    
     playTickSound();
     if (navigator.vibrate) navigator.vibrate(50);
+
+    // Track mouseup and touchend globally to handle mouse drift
+    document.addEventListener("mouseup", endHold);
+    document.addEventListener("touchend", endHold);
 
     state.sosHoldInterval = setInterval(() => {
       state.sosHoldProgress += progressStepMs;
       
       // Calculate progress svg offset (max 283)
-      const ratio = state.sosHoldProgress / maxHoldMs;
+      const ratio = Math.min(1, state.sosHoldProgress / maxHoldMs);
       const offset = 283 - (283 * ratio);
       progressBar.style.strokeDashoffset = offset;
 
@@ -588,11 +630,9 @@ function initSOSButton() {
       countdownNumber.textContent = secRemaining > 0 ? secRemaining : "0";
 
       if (state.sosHoldProgress >= maxHoldMs) {
-        clearInterval(state.sosHoldInterval);
-        state.sosHoldInterval = null; // Clear the interval state
-        progressBar.style.strokeDashoffset = 283;
-        countdownOverlay.classList.add("hide");
-        triggerSOSAlert();
+        if (helperEn) helperEn.textContent = "RELEASE TO SEND SOS NOW";
+        if (helperHi) helperHi.textContent = "अभी भेजने के लिए छोड़ें!";
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
       } else {
         if (navigator.vibrate) navigator.vibrate(50);
       }
@@ -600,29 +640,52 @@ function initSOSButton() {
   };
 
   const endHold = (e) => {
-    if (e && e.cancelable) {
-      e.preventDefault();
-    }
+    // Clean up global listeners
+    document.removeEventListener("mouseup", endHold);
+    document.removeEventListener("touchend", endHold);
+
     if (state.sosHoldInterval) {
       clearInterval(state.sosHoldInterval);
       state.sosHoldInterval = null;
     }
     progressBar.style.strokeDashoffset = 283;
     countdownOverlay.classList.add("hide");
+
+    // Check if the hold reached 3 seconds, and trigger SOS synchronously on release
+    if (state.sosHoldProgress >= maxHoldMs) {
+      state.sosHoldProgress = 0;
+      triggerSOSAlert();
+    } else {
+      state.sosHoldProgress = 0;
+    }
   };
 
   sosBtn.addEventListener("mousedown", startHold);
-  sosBtn.addEventListener("mouseup", endHold);
-  sosBtn.addEventListener("mouseleave", endHold);
-
   sosBtn.addEventListener("touchstart", startHold);
-  sosBtn.addEventListener("touchend", endHold);
-  sosBtn.addEventListener("touchcancel", endHold);
+  
+  sosBtn.addEventListener("touchcancel", () => {
+    document.removeEventListener("touchend", endHold);
+    if (state.sosHoldInterval) {
+      clearInterval(state.sosHoldInterval);
+      state.sosHoldInterval = null;
+    }
+    progressBar.style.strokeDashoffset = 283;
+    countdownOverlay.classList.add("hide");
+    state.sosHoldProgress = 0;
+  });
 
   // Deactivate Overlay SOS button trigger PIN input modal
   document.getElementById("deactivate-sos-btn").addEventListener("click", () => {
     openPinLockModal();
   });
+
+  // Manual WhatsApp trigger button on overlay
+  const manualWhatsAppBtn = document.getElementById("manual-whatsapp-btn");
+  if (manualWhatsAppBtn) {
+    manualWhatsAppBtn.addEventListener("click", () => {
+      sendLocationToSister();
+    });
+  }
 }
 
 function initShakeSensor() {
@@ -662,17 +725,21 @@ function initShakeSensor() {
 }
 
 function playTickSound() {
-  if (!state.audioContext) return;
-  const ctx = state.audioContext;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.frequency.setValueAtTime(800, ctx.currentTime);
-  gain.gain.setValueAtTime(0.05, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.1);
+  try {
+    if (!state.audioContext) return;
+    const ctx = state.audioContext;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.1);
+  } catch (err) {
+    console.warn("Failed to play tick sound:", err);
+  }
 }
 
 function triggerSOSAlert() {
@@ -692,12 +759,21 @@ function triggerSOSAlert() {
   startSirenAlarm();
   if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400, 200, 400]);
 
+  // Speak out voice warning script via browser SpeechSynthesis
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const speakText = state.currentLanguage === 'en' 
+      ? "Emergency SOS activated! Alerting your safety guardians."
+      : "आपातकालीन एसओएस सक्रिय! आपके संरक्षकों को सूचित किया जा रहा है।";
+    const utterance = new SpeechSynthesisUtterance(speakText);
+    utterance.lang = state.currentLanguage === 'en' ? 'en-US' : 'hi-IN';
+    utterance.rate = 0.95;
+    window.speechSynthesis.speak(utterance);
+  }
+
   // Create simulated notification to user about SMS being dispatched
   let contactsListText = state.contacts.map(c => `${c.name} (${c.phone})`).join(", ");
   if (!contactsListText) contactsListText = "No guardians listed";
-  
-  const alertMsgEn = `SOS ALERT DISPATCHED! Coordinates: 28.6139° N, 77.2090° E. User Name: ${state.userName}. Alerting Guardians: ${contactsListText}`;
-  const alertMsgHi = `आपातकालीन अलार्म भेजा गया! स्थिति: 28.6139° N, 77.2090° E. नाम: ${state.userName}। अलर्ट संरक्षक: ${contactsListText}`;
   
   showToast("SOS Alert Dispatched!", "आपातकालीन संदेश भेजा गया!");
   
@@ -720,29 +796,38 @@ function triggerSOSAlert() {
 }
 
 function sendLocationToSister() {
-  let targetContact = state.contacts.find(c => c.name.toLowerCase().includes('sister') || c.name.includes('बहन'));
-  
-  if (!targetContact) {
-    if (state.contacts.length > 0) {
-      targetContact = state.contacts[0];
-    } else {
-      showToast("No guardians found to send location!", "लोकेशन भेजने के लिए कोई संरक्षक नहीं मिला!");
-      return;
-    }
+  if (state.contacts.length === 0) {
+    showToast("No guardians found! Add contacts first.", "कोई संरक्षक नहीं मिला! पहले संपर्क जोड़ें!");
+    return;
   }
 
-  let originalPhone = targetContact.phone;
-  let phone = targetContact.phone.replace(/\D/g, '');
-  if (phone.length === 10) phone = "91" + phone;
+  showToast("Locating... WhatsApp buttons ready below!", "लोकेशन मिल रही है...");
 
-  showToast("Detecting live location...", "लाइव लोकेशन पता की जा रही है...");
+  const doSend = (lat, lng) => {
+    const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
 
+    // Update location link in overlay
+    const linkEn = document.getElementById("sos-location-link-en");
+    const linkHi = document.getElementById("sos-location-link-hi");
+    if (linkEn) linkEn.textContent = mapsLink;
+    if (linkHi) linkHi.textContent = mapsLink;
+
+    // Build WhatsApp buttons panel inside the SOS overlay
+    buildWhatsAppPanel(mapsLink);
+  };
+
+  // If we have a cached location from prefetch, use it immediately first
+  if (state.lastKnownLat && state.lastKnownLng) {
+    doSend(state.lastKnownLat, state.lastKnownLng);
+  }
+
+  // Request fresh location (high accuracy) to update the map link dynamically
   if (navigator.geolocation) {
     const geoSuccess = (pos) => openWhatsApp(phone, originalPhone, pos.coords.latitude, pos.coords.longitude, targetContact.name);
     
     // First try with high accuracy
     navigator.geolocation.getCurrentPosition(
-      geoSuccess,
+    geoSuccess,
       (err) => {
         console.warn("High accuracy failed, trying low accuracy...", err);
         // Fallback to low accuracy
@@ -756,51 +841,110 @@ function sendLocationToSister() {
         );
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+b
     );
   } else {
-    openWhatsApp(phone, originalPhone, 28.6139, 77.2090, targetContact.name);
+    // Geolocation not supported, fall back to IP
+    fetch('https://ipapi.co/json/')
+      .then(res => res.json())
+      .then(data => {
+        if (data.latitude && data.longitude) {
+          doSend(data.latitude, data.longitude);
+        } else {
+          doSend(28.6139, 77.2090);
+        }
+      })
+      .catch(() => {
+        doSend(28.6139, 77.2090);
+      });
   }
 }
 
-function openWhatsApp(phone, originalPhone, lat, lng, name) {
-  const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
-  const messageEn = `*SOS EMERGENCY!* I need help immediately. My current live location is: ${mapsLink}`;
-  const messageHi = `*आपातकाल (SOS)!* मुझे तुरंत मदद चाहिए। मेरी वर्तमान लोकेशन यहाँ है: ${mapsLink}`;
-  
-  // Dynamically update UI links with actual coordinates
-  const linkEn = document.getElementById("sos-location-link-en");
-  const linkHi = document.getElementById("sos-location-link-hi");
-  if (linkEn) linkEn.textContent = mapsLink;
-  if (linkHi) linkHi.textContent = mapsLink;
-  
-  const finalMsg = state.currentLanguage === 'en' ? messageEn : messageHi;
-  
-  // Using wa.me and whatsapp:// fallback for better native Desktop app support
-  const isDesktop = !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
-  
-  let waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(finalMsg)}`;
-  if (isDesktop) {
-    // Attempt native app URI on desktop if preferred, but wa.me usually handles it best
-    waUrl = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(finalMsg)}`;
-  }
-  
-  showToast(`Alerting ${name} via WhatsApp & Call...`, `${name} को कॉल और मैसेज किया जा रहा है...`);
-  
-  // Open WhatsApp in a new tab (or prompt native app)
-  window.open(waUrl, '_blank');
-  
-  // Fallback to wa.me if whatsapp:// fails on desktop
-  if (isDesktop) {
-    setTimeout(() => {
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(finalMsg)}`, '_blank');
-    }, 500);
-  }
-  
-  // Initiate a direct phone call in the current window
+function cleanPhoneForWa(rawPhone) {
+  let phone = rawPhone.trim().replace(/\D/g, '');
+  if (phone.startsWith('00')) phone = phone.slice(2);
+  if (phone.length === 10) phone = '91' + phone;
+  else if (phone.length === 11 && phone.startsWith('0')) phone = '91' + phone.slice(1);
+  return phone;
+}
 
-  setTimeout(() => {
-    window.location.href = `tel:${originalPhone}`;
-  }, 300);
+function buildWhatsAppPanel(mapsLink) {
+  const messageEn = `*🚨 SOS EMERGENCY!* I need help immediately!%0AMy live location: ${mapsLink}%0APlease respond ASAP!`;
+  const messageHi = `*🚨 आपातकाल (SOS)!* मुझे अभी तुरंत मदद चाहिए!%0Aलाइव लोकेशन: ${mapsLink}%0Aकृपया तुरंत संपर्क करें!`;
+  const finalMsg = state.currentLanguage === 'en' ? messageEn : messageHi;
+
+  // Remove old panel if exists
+  const existing = document.getElementById('wa-dispatch-panel');
+  if (existing) existing.remove();
+
+  // Build panel
+  const panel = document.createElement('div');
+  panel.id = 'wa-dispatch-panel';
+  panel.style.cssText = `
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(37,211,102,0.4);
+    border-radius: 14px;
+    padding: 12px;
+    margin: 10px 0;
+    width: 100%;
+  `;
+
+  const title = document.createElement('p');
+  title.style.cssText = 'color:#25d366; font-size:11px; font-weight:700; margin-bottom:8px; text-align:center; letter-spacing:0.5px;';
+  title.textContent = state.currentLanguage === 'en' ? '📲 TAP TO SEND WHATSAPP TO GUARDIANS' : '📲 गार्डियन को व्हाट्सएप भेजें';
+  panel.appendChild(title);
+
+  state.contacts.forEach(contact => {
+    const cleanPhone = cleanPhoneForWa(contact.phone);
+    // wa.me URL with pre-filled message
+    const waUrl = `https://wa.me/${cleanPhone}?text=${finalMsg}`;
+
+    const btn = document.createElement('a');
+    btn.href = waUrl;
+    btn.target = '_blank';
+    btn.rel = 'noopener noreferrer';
+    btn.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #25d366;
+      color: white;
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    `;
+    btn.innerHTML = `
+      <i class="fa-brands fa-whatsapp" style="font-size:18px;"></i>
+      <div>
+        <div>${contact.name}</div>
+        <div style="font-size:10px; opacity:0.85;">+${cleanPhone}</div>
+      </div>
+      <i class="fa-solid fa-arrow-right" style="margin-left:auto;"></i>
+    `;
+    panel.appendChild(btn);
+  });
+
+  // Insert into the SOS overlay before the existing WhatsApp button
+  const manualBtn = document.getElementById('manual-whatsapp-btn');
+  if (manualBtn && manualBtn.parentNode) {
+    manualBtn.parentNode.insertBefore(panel, manualBtn);
+    // Hide the old manual button to avoid confusion
+    manualBtn.style.display = 'none';
+  }
+
+  showToast("Tap a guardian button to send WhatsApp!", "गार्डियन बटन दबाएं!");
+}
+
+function openWhatsApp(phone, originalPhone, lat, lng, name) {
+  // Legacy function kept for compatibility — now handled by buildWhatsAppPanel
+  const cleanPhone = cleanPhoneForWa(originalPhone);
+  const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
+  const msg = `*SOS EMERGENCY!* I need help! Live location: ${mapsLink}`;
+  const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, '_blank');
 }
 
 function deactivateSOSAlert() {
@@ -817,6 +961,11 @@ function deactivateSOSAlert() {
 
   stopSirenAlarm();
   if (navigator.vibrate) navigator.vibrate(0);
+  
+  // Cancel active voice alarm
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
   
   if (state.sosLocationInterval) {
     clearInterval(state.sosLocationInterval);
@@ -868,6 +1017,32 @@ function initPinKeypad() {
     });
   });
   
+  // Add physical keyboard support for PIN pad deactivation
+  window.addEventListener("keydown", (e) => {
+    const pinOverlay = document.getElementById("pin-entry-overlay");
+    if (!pinOverlay || pinOverlay.classList.contains("hide")) return;
+
+    const key = e.key;
+    if (key >= "0" && key <= "9") {
+      playKeyTone(440);
+      if (state.enteredPin.length < 4) {
+        state.enteredPin += key;
+        updatePinDotsDisplay();
+        if (state.enteredPin.length === 4) {
+          setTimeout(verifyDeactivationPin, 200);
+        }
+      }
+    } else if (key === "Backspace") {
+      playKeyTone(440);
+      state.enteredPin = state.enteredPin.slice(0, -1);
+      updatePinDotsDisplay();
+    } else if (key === "Escape" || key === "Delete") {
+      playKeyTone(440);
+      state.enteredPin = "";
+      updatePinDotsDisplay();
+    }
+  });
+  
   document.getElementById("pin-cancel-btn").addEventListener("click", () => {
     document.getElementById("pin-entry-overlay").classList.add("hide");
     state.enteredPin = "";
@@ -905,17 +1080,21 @@ function verifyDeactivationPin() {
 }
 
 function playKeyTone(freq, duration = 0.15) {
-  if (!state.audioContext) return;
-  const ctx = state.audioContext;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.frequency.setValueAtTime(freq, ctx.currentTime);
-  gain.gain.setValueAtTime(0.08, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + duration);
+  try {
+    if (!state.audioContext) return;
+    const ctx = state.audioContext;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  } catch (err) {
+    console.warn("Failed to play key tone:", err);
+  }
 }
 
 // ==================== FAKE CALL SIMULATOR & DTMF DIALER ====================
@@ -1157,12 +1336,15 @@ function terminateActiveCall() {
 let leafletMap = null;
 let userMarker = null;
 let mapMarkers = [];
+let selectedRadarPoint = null; // Currently selected safe point
 
 function initRadarMap() {
   // Set up Filter Click Listeners
   document.getElementById("radar-filter-all").addEventListener("click", (e) => setRadarFilter('all', e));
   document.getElementById("radar-filter-police").addEventListener("click", (e) => setRadarFilter('police', e));
   document.getElementById("radar-filter-safehouse").addEventListener("click", (e) => setRadarFilter('safehouse', e));
+
+  // Canvas click/tap handled by Leaflet marker click events
   
   // Set up Navigation Path Clicker
   document.getElementById("radar-route-btn").addEventListener("click", () => {
@@ -1246,6 +1428,8 @@ function initializeRealMap() {
 
 function setupMapForLocation(lat, lng) {
   if (!leafletMap) return;
+  state.lastKnownLat = lat;
+  state.lastKnownLng = lng;
   leafletMap.setView([lat, lng], 14);
 
   const userIcon = L.divIcon({
@@ -1341,6 +1525,57 @@ function simulateWalkMovement() {
   }, 1000);
 }
 
+
+// Pixel → meters scale: canvas is 340px wide ≈ 600m real-world equivalent
+const RADAR_SCALE_M_PER_PX = 600 / 340;
+const USER_POINT = { x: 170, y: 140 }; // user dot position
+
+function getDirection(dx, dy) {
+  const angle = Math.atan2(-dy, dx) * 180 / Math.PI; // flip Y axis
+  const dirs = ['East','NE','North','NW','West','SW','South','SE'];
+  const dirsHi = ['पूर्व','उत्तर-पूर्व','उत्तर','उत्तर-पश्चिम','पश्चिम','दक्षिण-पश्चिम','दक्षिण','दक्षिण-पूर्व'];
+  const idx = Math.round(((angle % 360) + 360) / 45) % 8;
+  return { en: dirs[idx], hi: dirsHi[idx] };
+}
+
+function showRadarPointInfo(point) {
+  const card = document.getElementById('radar-point-info-card');
+  if (!card) return;
+
+  if (!point) {
+    card.classList.add('hide');
+    return;
+  }
+
+  let meters = 0;
+  if (leafletMap && state.lastKnownLat && state.lastKnownLng) {
+    meters = Math.round(leafletMap.distance([state.lastKnownLat, state.lastKnownLng], [point.lat, point.lng]));
+  }
+  const walkMins = Math.max(1, Math.round(meters / 80)); // avg 80m/min walking speed
+  
+  const dx = point.lng - state.lastKnownLng;
+  const dy = point.lat - state.lastKnownLat;
+  const direction = getDirection(dx, -dy);
+
+  const isEn = state.currentLanguage === 'en';
+  const name = isEn ? point.name : (point.nameHi || point.name);
+  const typeLabel = point.type === 'police'
+    ? (isEn ? '🚔 Police' : '🚔 पुलिस')
+    : (isEn ? '🏥 Safe Zone' : '🏥 सुरक्षित स्थान');
+  const distText = meters >= 1000 ? (meters/1000).toFixed(1)+'km' : meters+'m';
+  const dir = isEn ? direction.en : direction.hi;
+
+  document.getElementById('rpi-name').textContent = name;
+  document.getElementById('rpi-type').textContent = typeLabel;
+  document.getElementById('rpi-dist').textContent = distText;
+  document.getElementById('rpi-time').textContent = walkMins + (isEn ? ' min walk' : ' मिनट पैदल');
+  document.getElementById('rpi-dir').textContent = dir;
+  document.getElementById('rpi-phone').textContent = point.phone || '-';
+  document.getElementById('rpi-call-btn').href = `tel:${point.phone || ''}`;
+
+  card.classList.remove('hide');
+}
+
 function setRadarFilter(filter, event) {
   state.mapFilter = filter;
   const buttons = document.querySelectorAll(".map-ctrl-btn");
@@ -1363,15 +1598,150 @@ function drawRadarMap() {
     let label = state.currentLanguage === 'en' ? p.name : (p.nameHi || p.name);
     let color = (p.type === 'police') ? '#2979ff' : '#39ff14';
     
+<<<<<<< HEAD
     const icon = L.divIcon({
       className: 'custom-leaflet-marker',
       html: \`<div style="background:\${color}; width:10px; height:10px; border-radius:50%; box-shadow: 0 0 8px \${color};"></div>
              <div style="color:#fff; font-size:10px; margin-top:2px; white-space:nowrap; text-shadow:1px 1px 2px #000;">\${label}</div>\`,
       iconSize: [10, 10],
       iconAnchor: [5, 5]
+=======
+    // Draw rotating sweep line
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(radarAngle);
+    
+    let sweepGrad = ctx.createLinearGradient(0, 0, 160, 0);
+    sweepGrad.addColorStop(0, 'rgba(0, 229, 255, 0.4)');
+    sweepGrad.addColorStop(1, 'rgba(0, 229, 255, 0)');
+    ctx.strokeStyle = sweepGrad;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(150, 0);
+    ctx.stroke();
+    ctx.restore();
+    
+    radarAngle += 0.015;
+    if (radarAngle > Math.PI * 2) radarAngle = 0;
+    
+    // Render nearest route path overlay if route computed
+    let pathStart = { x: 170, y: 140 }; // Start User Node
+    let pathEnd = { x: 280, y: 200 }; // End Safehouse Hub
+    
+    if (state.mapRouteActive) {
+      ctx.strokeStyle = '#39ff14';
+      ctx.lineWidth = 3;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = '#39ff14';
+      ctx.beginPath();
+      ctx.moveTo(pathStart.x, pathStart.y);
+      ctx.bezierCurveTo(200, 120, 240, 170, pathEnd.x, pathEnd.y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    
+    // Draw Markers
+    radarPoints.forEach(p => {
+      if (state.mapFilter !== 'all' && p.type !== 'user' && p.type !== state.mapFilter) {
+        return;
+      }
+      
+      let markerX = p.x;
+      let markerY = p.y;
+      
+      let label = state.currentLanguage === 'en' ? p.name : (p.nameHi || p.name);
+      
+      if (p.type === 'user') {
+        // If walking simulation active, animate dot along path bezier
+        if (state.mapRouteActive && state.mapWalkActive) {
+          const t = state.mapWalkProgress;
+          // Interpolate bezier coordinates
+          // P = (1-t)^3*P0 + 3(1-t)^2*t*P1 + 3(1-t)*t^2*P2 + t^3*P3
+          // For simplicity, linear curve interpolation between 170,140 -> 200,120 -> 240,170 -> 280,200
+          const x1 = 170, y1 = 140;
+          const x2 = 200, y2 = 120;
+          const x3 = 240, y3 = 170;
+          const x4 = 280, y4 = 200;
+          
+          markerX = Math.pow(1-t, 3)*x1 + 3*Math.pow(1-t, 2)*t*x2 + 3*(1-t)*Math.pow(t, 2)*x3 + Math.pow(t, 3)*x4;
+          markerY = Math.pow(1-t, 3)*y1 + 3*Math.pow(1-t, 2)*t*y2 + 3*(1-t)*Math.pow(t, 2)*y3 + Math.pow(t, 3)*y4;
+        }
+        
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#00e5ff';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00e5ff';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, 10 + Math.sin(Date.now() * 0.005) * 4, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        // Choose color by type
+        const dotColor = p.type === 'police' ? '#2979ff' : '#39ff14';
+        const bgColor  = p.type === 'police' ? 'rgba(41,121,255,0.75)' : 'rgba(57,255,20,0.75)';
+        const icon     = p.type === 'police' ? '🚔' : '🏥';
+
+        // Draw glowing dot
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = dotColor;
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, 6, 0, Math.PI * 2);
+        ctx.fillStyle = dotColor;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Pulse ring
+        ctx.strokeStyle = dotColor + '55';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, 10 + Math.sin(Date.now() * 0.004 + markerX) * 3, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Selection highlight ring (if this point is selected)
+        if (selectedRadarPoint && selectedRadarPoint.name === p.name) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          ctx.arc(markerX, markerY, 16, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Name label with background pill
+        const shortLabel = label.length > 18 ? label.slice(0, 16) + '…' : label;
+        ctx.font = 'bold 9px Outfit, sans-serif';
+        const tw = ctx.measureText(shortLabel).width;
+        const lx = markerX - tw / 2 - 4;
+        const ly = markerY - 22;
+        const lw = tw + 8;
+        const lh = 14;
+
+        // Pill background
+        ctx.fillStyle = bgColor;
+        ctx.beginPath();
+        ctx.roundRect(lx, ly, lw, lh, 4);
+        ctx.fill();
+
+        // Label text
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText(shortLabel, markerX, ly + 10);
+        ctx.textAlign = 'left';
+      }
+>>>>>>> 30295c86b0e8b7885b67691cd1ad6438908c7b0b
     });
     
     let marker = L.marker([p.lat, p.lng], { icon: icon }).addTo(leafletMap);
+    marker.on("click", () => {
+      selectedRadarPoint = p;
+      showRadarPointInfo(p);
+    });
     mapMarkers.push(marker);
   });
 }
