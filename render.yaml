@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: shakti-app
+    env: static
+    # Since this is a plain HTML/JS/CSS app, there is no build command needed.
+    buildCommand: ""
+    # Publish the current directory where index.html is located
+    staticPublishPath: ./
+    
+    # Routing rule to ensure PWA works properly if URL is refreshed
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
