@@ -29,7 +29,7 @@ const state = {
   speechSynthUtterance: null,
   
   // Custom Settings (Saved to LocalStorage)
-  userName: "Nisha Sharma",
+  userName: "Shailbala Singh",
   safetyPin: "1234",
   enteredPin: "",
   batteryLevel: 85,
@@ -259,8 +259,8 @@ function initSettings() {
   if (savedName) {
     state.userName = savedName;
   } else {
-    state.userName = "Nisha Sharma";
-    localStorage.setItem("shakti_settings_name", "Nisha Sharma");
+    state.userName = "Shailbala Singh";
+    localStorage.setItem("shakti_settings_name", "Shailbala Singh");
   }
   
   document.getElementById("settings-pin").value = state.safetyPin;
